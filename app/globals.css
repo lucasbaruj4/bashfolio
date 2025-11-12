@@ -8,11 +8,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
+@font-face {
+  font-family: Terminal;
+  src: url(../public/fonts/BigBlueTerm437NerdFont-Regular.ttf);
+}
+
+@media (prefers-olor-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
