@@ -1,9 +1,9 @@
-export default function createfile(name : string, content : string) {
+export default function CreateFile(name : string, content : string) {
 
 
 }
 
-export function file() {
+export function File() {
 
 }
 
