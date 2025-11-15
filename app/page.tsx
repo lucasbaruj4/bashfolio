@@ -1,19 +1,64 @@
 'use client';
 import CreateFile from "@src/file";
 import { appendContent } from "@src/file";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export default function terminal() {
+  var commandSent = useRef(false);
   const [userInput, setUserInput] = useState("");
+  const [print, setPrint] = useState("");
+  var commandIdentified = useRef(" ");
 
   const detectKey = (e: any) => {
-    if (e.key == "Enter") {
-      userInputSent(userInput);
+    if (e.key == " " && !commandSent.current) {
+      commandSent.current = true;
+      detectCommand(userInput);
+    } else if (e.key == 'Enter' && commandIdentified.current != " ") {
+      const clean_input = document.getElementById('user_prompt') as HTMLInputElement;
+      clean_input.value = "";
+      setPrint(commandIdentified.current);
+      commandSent.current = false;
+      setUserInput("");
+      // here the command should be sent off somewhere else before cleaning it, same goes to the other times i do the line below
+      commandIdentified.current = " "
+    } else if (e.key == 'Enter' && commandIdentified.current == " ") {
+      const clean_input = document.getElementById('user_prompt') as HTMLInputElement;
+      clean_input.value = "";
+      setPrint("puerkesa de comando")
+      commandSent.current = false;
+      setUserInput("");
+      commandIdentified.current = " "
+    } else if (e.key == 'Enter' && !commandSent.current) {
+      const clean_input = document.getElementById('user_prompt') as HTMLInputElement;
+      clean_input.value = "";
+      setPrint("puerkesa de comando")
+      commandIdentified.current = " "
     }
   }
 
-  const userInputSent = (userInput: string) => {
+  const detectCommand = (userInput: string): void => {
     console.log("el comando es: ", userInput);
+    switch (userInput) {
+      case "cat":
+        commandIdentified.current = userInput;
+        break;
+      case "ls":
+        commandIdentified.current = userInput;
+        break;
+      case "cd":
+        commandIdentified.current = userInput;
+        break;
+      case "mkdir":
+        commandIdentified.current = userInput;
+        break;
+      case "rmdir":
+        commandIdentified.current = userInput;
+        break;
+      default:
+        console.log("No Commands Detected");
+        commandIdentified.current = " ";
+        break;
+    }
   }
 
 
@@ -23,7 +68,12 @@ export default function terminal() {
         <div id="pwd" className="col-start-1 text-left text-3xl font-[Terminal]">
           ~/some/direction {">"}&nbsp;
         </div>
-        <input id="user_prompt" placeholder="cat README" autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setUserInput(e.target.value)} />
+        <form id="user_prompt_form">
+          <input id="user_prompt" placeholder="cat README" autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setUserInput(e.target.value)} />
+        </form>
+        <div id="commandSee" className="text-3xl">
+          {print}
+        </div>
       </div>
     </div>
   )
