@@ -1,12 +1,13 @@
 'use client';
 import CreateFile from "@src/file";
-import { appendContent } from "@src/file";
+import { appendContentFunction, } from "@src/file";
+import { Directory } from "@src/directory";
+import { File } from "@src/file";
 import { useState, useRef } from "react";
 
 export default function terminal() {
   var commandSent = useRef(false);
   const [userInput, setUserInput] = useState("");
-  const [print, setPrint] = useState("");
   var commandIdentified = useRef(" ");
 
   const detectKey = (e: any) => {
@@ -16,7 +17,7 @@ export default function terminal() {
     } else if (e.key == 'Enter' && commandIdentified.current != " ") {
       const clean_input = document.getElementById('user_prompt') as HTMLInputElement;
       clean_input.value = "";
-      setPrint(commandIdentified.current);
+      console.log(commandIdentified.current);
       commandSent.current = false;
       setUserInput("");
       // here the command should be sent off somewhere else before cleaning it, same goes to the other times i do the line below
@@ -24,14 +25,16 @@ export default function terminal() {
     } else if (e.key == 'Enter' && commandIdentified.current == " ") {
       const clean_input = document.getElementById('user_prompt') as HTMLInputElement;
       clean_input.value = "";
-      setPrint("puerkesa de comando")
+      console.log("puerkesa de comando")
       commandSent.current = false;
       setUserInput("");
+      // here the command should be sent off somewhere else before cleaning it, same goes to the other times i do the line below
       commandIdentified.current = " "
     } else if (e.key == 'Enter' && !commandSent.current) {
       const clean_input = document.getElementById('user_prompt') as HTMLInputElement;
       clean_input.value = "";
-      setPrint("puerkesa de comando")
+      console.log("puerkesa de comando")
+      // here the command should be sent off somewhere else before cleaning it, same goes to the other times i do the line below
       commandIdentified.current = " "
     }
   }
@@ -69,11 +72,8 @@ export default function terminal() {
           ~/some/direction {">"}&nbsp;
         </div>
         <form id="user_prompt_form">
-          <input id="user_prompt" placeholder="cat README" autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setUserInput(e.target.value)} />
+          <input id="user_prompt" value={userInput} placeholder="cat README" autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setUserInput(e.target.value)} />
         </form>
-        <div id="commandSee" className="text-3xl">
-          {print}
-        </div>
       </div>
     </div>
   )

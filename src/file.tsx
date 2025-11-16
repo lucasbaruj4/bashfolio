@@ -1,29 +1,40 @@
-class File {
+export class File {
   name: string;
+  contentArray: string[];
   content?: string;
+  inode: number;
+  isDirectory: boolean = false;
 
-  constructor(name: string, content?: string) {
+  constructor(name: string) {
     this.name = name;
-    this.content = content;
+    this.inode = Math.floor(Math.random() * 10000);
+    this.contentArray = [];
   }
 
   appendContent(content: string) {
-    this.content = content;
+    this.contentArray!.push(content);
   }
 }
 
 
-export default function CreateFile(name: string) {
+export default function createFile(name: string) {
   var newFile: File = new File(name);
-  console.log("The file has been created");
   return newFile;
 }
 
-export function appendContent(file: File, content: string) {
+export function appendContentFunction(file: File, content: string) {
   file.appendContent(content);
-  console.log("The content has been appended to the file");
   return file;
 }
 
+
+export function printContent(file: File) {
+  const arrayContent = file.contentArray;
+  var text = " ";
+  for (var item of arrayContent) {
+    text += item;
+  }
+  return text;
+}
 
 
