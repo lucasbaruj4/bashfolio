@@ -3,7 +3,7 @@ import createDirectory, { Directory } from "./directory"
 
 export function cat(file: File | any) {
   if (!(file instanceof File)) {
-    var text = `Error: ${file} is not a real file`;
+    var text = `Error: '${file}' is not a real file`;
     return text;
   }
   const filePassed = file;

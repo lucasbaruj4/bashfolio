@@ -7,8 +7,20 @@ import { useState, useRef } from "react";
 import { cat, echo, mkdir, touch, greaterThan } from "@src/commands";
 
 var rootDirectory = new Directory("/");
+function initializeRootDirectory(rootDirectory: Directory): void {
+  var README = new File("README");
+  README.appendContent("hola me llamo lucas este es mi README bla bla bla");
+  var Berlin = new File("berlin_2025");
+  Berlin.appendContent("vivo en Berlin 2025");
+  var Future_Plans = new File("future_plans");
+  Future_Plans.appendContent("mis planes para el futuro son blnnfasdnasd");
+  rootDirectory.appendElementDirectory(README.inode, README);
+  rootDirectory.appendElementDirectory(Berlin.inode, Berlin);
+  rootDirectory.appendElementDirectory(Future_Plans.inode, Future_Plans);
+}
 
 export default function terminal() {
+  initializeRootDirectory(rootDirectory);
   var commandSent = useRef(false);
   const [currentDir, setCurrentDir] = useState(rootDirectory);
   const [terminalText, setTerminalText] = useState("");
@@ -25,7 +37,7 @@ export default function terminal() {
     } else if (e.key == 'Enter' && commandIdentified.current != " ") {
       console.log(commandIdentified.current);
       commandSent.current = false;
-      const to_substract: string = firstCommand.current;
+      const to_substract: string = firstCommand.current + " ";
       const terminal: string = terminalText;
       body.current = (terminal.replace(to_substract, ""));
       output = sendCommand(commandIdentified.current, body.current);

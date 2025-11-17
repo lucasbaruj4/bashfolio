@@ -39,13 +39,13 @@ export function printContent(file: File) {
   return text;
 }
 
-export function isFile(possibleFile: string, currentDirectory: Directory): File | number {
+export function isFile(possibleFile: string, currentDirectory: Directory): File | string {
   for (var value of currentDirectory.list.values()) {
     if (value instanceof File && value.name == possibleFile) {
       return value;
     }
   }
-  return 1;
+  return possibleFile;
 }
 
 
