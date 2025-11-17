@@ -7,7 +7,7 @@ export class Directory {
   isDirectory: boolean = true;
 
   constructor(name: string) {
-    this.name = name;
+    this.name = name + "/";
     this.inode = Math.floor(Math.random() * 10000);
     this.list = new Map();
   }

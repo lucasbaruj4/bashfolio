@@ -1,12 +1,16 @@
 'use client';
 import CreateFile from "@src/file";
+import { createElement } from "react";
 import { appendContentFunction, } from "@src/file";
 import { Directory } from "@src/directory";
 import { File, isFile } from "@src/file";
 import { useState, useRef } from "react";
 import { cat, echo, ls, mkdir, touch, greaterThan } from "@src/commands";
+import Path from "@src/path";
 
-var rootDirectory = new Directory("/");
+
+
+var rootDirectory = new Directory("");
 function initializeRootDirectory(rootDirectory: Directory): void {
   var README = new File("README");
   README.appendContent("hola me llamo lucas este es mi README bla bla bla");
@@ -20,7 +24,15 @@ function initializeRootDirectory(rootDirectory: Directory): void {
 }
 
 initializeRootDirectory(rootDirectory);
+var rootPath = Path(rootDirectory, rootDirectory);
 export default function terminal() {
+
+  const currentPath = useRef(rootPath);
+  const [pastPrompts, setPrompts] = useState<Array<{
+    cwd: string,
+    output: string,
+    textSent: string
+  }>>([]);
   var commandSent = useRef(false);
   const [currentDir, setCurrentDir] = useState(rootDirectory);
   const [terminalText, setTerminalText] = useState("");
@@ -41,27 +53,30 @@ export default function terminal() {
       const terminal: string = terminalText;
       body.current = (terminal.replace(to_substract, ""));
       output = sendCommand(commandIdentified.current, body.current);
-      setTerminalText("");
       if (commandIdentified.current == "clear") {
         firstCommand.current = " ";
         commandIdentified.current = " ";
         body.current = "";
+        setPrompts(old => [...old, { cwd: currentPath.current, output: "", textSent: terminalText }]);
+        setTerminalText("");
         return;
       }
-      const output_div = document.getElementById("output_div") as HTMLElement;
-      output_div.innerHTML = output;
       firstCommand.current = " ";
       commandIdentified.current = " ";
+      // HERE NEED TO APPEND TO STATE OF TERMINALS
       body.current = "";
+      setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
+      setTerminalText("");
     } else if (e.key == 'Enter' && commandSent.current && commandIdentified.current == " ") {
       console.log("puerkesa de comando")
-      const output_div = document.getElementById("output_div") as HTMLElement;
-      output_div.innerHTML = `Error: command ${terminalText} not found`;
-      setTerminalText("");
       commandIdentified.current = " ";
       firstCommand.current = " ";
+      // HERE NEED TO APPEND TO STATE OF TERMINALS
+      setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} not found`, textSent: terminalText }]);
+      setTerminalText("");
     } else if (e.key == 'Enter' && !commandSent.current) {
       if (terminalText == "clear") {
+        setPrompts(old => [...old, { cwd: currentPath.current, output: "", textSent: terminalText }]);
         setTerminalText(" ");
         window.location.reload();
       } else {
@@ -69,14 +84,12 @@ export default function terminal() {
         if (detect_verdict == true) {
           var fake_body = "";
           const output = sendCommand(terminalText, fake_body);
-          const output_div = document.getElementById("output_div") as HTMLElement;
-          output_div.innerHTML = output;
+          setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
         } else {
-          const output_div = document.getElementById("output_div") as HTMLElement;
-          output_div.innerHTML = `Error: command ${terminalText} not found`;
-          setTerminalText("");
           commandIdentified.current = " ";
           firstCommand.current = " ";
+          setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} not found`, textSent: terminalText }]);
+          setTerminalText("");
         }
       }
     }
@@ -146,15 +159,43 @@ export default function terminal() {
     }
   }
 
-  return (
-    <div onKeyDown={detectKey}>
-      <div id="prompt" className="container grid grid-cols-[auto_1fr] gap-1 text-white p-3 text-xl py-5">
-        <div id="pwd" className="col-start-1 text-left text-3xl font-[Terminal]">
-          ~/some/direction {">"}&nbsp;
+  function createCurrentPrompt({ cwd, output }: { cwd: string, output: string }) {
+    return (
+      <div onKeyDown={detectKey}>
+        <div id="current_prompt" className="container grid grid-cols-[auto_1fr] gap-1 text-white p-3 text-xl py-5">
+          <div id="current_pwd" className="col-start-1 text-left text-3xl font-[Terminal]">
+            {cwd} {">"}&nbsp;
+          </div>
+          <input id="current_user_prompt" value={terminalText} placeholder="try 'cat README'" autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setTerminalText(e.target.value)} />
         </div>
-        <input id="user_prompt" value={terminalText} placeholder="try 'cat README'" autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setTerminalText(e.target.value)} />
+        <div id="current_output_div" className="text-3xl font-[Terminal]"> {output} </div>
       </div>
-      <div id="output_div" className="text-3xl font-[Terminal]"></div>
+    )
+  }
+
+  function createPastPrompt({ cwd, output, textSent }: { cwd: string, output: string, textSent: string }) {
+    return (
+      <div onKeyDown={detectKey}>
+        <div id="prompt" className="container grid grid-cols-[auto_1fr] gap-1 text-white p-3 text-xl py-5">
+          <div id="pwd" className="col-start-1 text-left text-3xl font-[Terminal]">
+            {cwd} {">"}&nbsp;
+          </div>
+          <div id="user_prompt" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent">{textSent}</div>
+        </div>
+        <div id="output_div" className="text-3xl font-[Terminal]"> {output} </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {pastPrompts.map(
+        (eachPromptValues, i) =>
+          <div key={i}>
+            {createPastPrompt(eachPromptValues)}
+          </div>)}
+
+      {createCurrentPrompt({ cwd: currentPath.current, output: "" })}
     </div>
   )
 }

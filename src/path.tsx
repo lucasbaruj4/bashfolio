@@ -1,23 +1,12 @@
 import { Directory } from "./directory";
 
-export default function appendToPath(Root: Directory, currentDirectory: Directory, Path?: string): string | undefined {
-  if (Path) {
-    var path = Path;
-  } else {
-    var path = "";
+export default function Path(rootDirectory: Directory, currentDir: Directory, previousPath?: string): string {
+  var pathString: string;
+  if (rootDirectory.name == currentDir.name) {
+    return rootDirectory.name;
+  } else if (previousPath) {
+    previousPath += currentDir.name;
+    return previousPath;
   }
-  var isRoot = false;
-  for (var value of Root.list.values()) {
-    if (value == Root.name) {
-      path = Root.name + "/";
-      isRoot = true;
-      break;
-    }
-  }
-  if (isRoot) {
-    return path;
-  } else if (!isRoot) {
-    path += currentDirectory.name + "/";
-    return path;
-  }
+  return "Path not found";
 }
