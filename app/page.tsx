@@ -30,12 +30,18 @@ export default function terminal() {
       body.current = (terminal.replace(to_substract, ""));
       output = sendCommand(commandIdentified.current, body.current);
       setTerminalText("");
+      if (commandIdentified.current == "clear") {
+        firstCommand.current = " ";
+        commandIdentified.current = " ";
+        body.current = "";
+        return;
+      }
       const output_div = document.getElementById("output_div") as HTMLElement;
       output_div.innerHTML = output;
       firstCommand.current = " ";
       commandIdentified.current = " ";
       body.current = "";
-    } else if (e.key == 'Enter' && commandIdentified.current == " ") {
+    } else if (e.key == 'Enter' && commandSent.current && commandIdentified.current == " ") {
       console.log("puerkesa de comando")
       const output_div = document.getElementById("output_div") as HTMLElement;
       output_div.innerHTML = `Error: command ${terminalText} not found`;
@@ -43,11 +49,24 @@ export default function terminal() {
       commandIdentified.current = " ";
       firstCommand.current = " ";
     } else if (e.key == 'Enter' && !commandSent.current) {
-      console.log("puerkesa de comando")
-      commandIdentified.current = " ";
-      firstCommand.current = " ";
-      setTerminalText(" ");
-    } else if (e.key == ' ' && commandSent.current) {
+      if (terminalText == "clear") {
+        setTerminalText(" ");
+        window.location.reload();
+      } else {
+        const detect_verdict = detectCommand(terminalText);
+        if (detect_verdict == true) {
+          var fake_body = "";
+          const output = sendCommand(terminalText, fake_body);
+          const output_div = document.getElementById("output_div") as HTMLElement;
+          output_div.innerHTML = output;
+        } else {
+          const output_div = document.getElementById("output_div") as HTMLElement;
+          output_div.innerHTML = `Error: command ${terminalText} not found`;
+          setTerminalText("");
+          commandIdentified.current = " ";
+          firstCommand.current = " ";
+        }
+      }
     }
   }
 
@@ -58,12 +77,16 @@ export default function terminal() {
         output = cat(isFile(body, currentDir));
         break;
       case "ls":
+        // output = ls(body); we have to create ls
         break;
       case "cd":
         break;
       case "mkdir":
         break;
       case "rmdir":
+        break;
+      case "clear":
+        window.location.reload();
         break;
       case "echo":
         output = echo(body);
@@ -75,7 +98,7 @@ export default function terminal() {
     return output;
   }
 
-  const detectCommand = (firstCommand: string): void => {
+  const detectCommand = (firstCommand: string): void | boolean => {
     console.log("el comando es: ", firstCommand);
     switch (firstCommand) {
       case "cat":
@@ -83,7 +106,7 @@ export default function terminal() {
         break;
       case "ls":
         commandIdentified.current = firstCommand;
-        break;
+        return true;
       case "cd":
         commandIdentified.current = firstCommand;
         break;
@@ -94,6 +117,9 @@ export default function terminal() {
         commandIdentified.current = firstCommand;
         break;
       case "echo":
+        commandIdentified.current = firstCommand;
+        break;
+      case "clear":
         commandIdentified.current = firstCommand;
         break;
       default:
