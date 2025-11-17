@@ -2,60 +2,99 @@
 import CreateFile from "@src/file";
 import { appendContentFunction, } from "@src/file";
 import { Directory } from "@src/directory";
-import { File } from "@src/file";
+import { File, isFile } from "@src/file";
 import { useState, useRef } from "react";
+import { cat, echo, mkdir, touch, greaterThan } from "@src/commands";
+
+var rootDirectory = new Directory("/");
 
 export default function terminal() {
   var commandSent = useRef(false);
-  const [userInput, setUserInput] = useState("");
+  const [currentDir, setCurrentDir] = useState(rootDirectory);
+  const [terminalText, setTerminalText] = useState("");
+  const firstCommand = useRef("");
+  const body = useRef("");
   var commandIdentified = useRef(" ");
 
   const detectKey = (e: any) => {
+    var output: string;
     if (e.key == " " && !commandSent.current) {
       commandSent.current = true;
-      detectCommand(userInput);
+      firstCommand.current = terminalText;
+      detectCommand(firstCommand.current);
     } else if (e.key == 'Enter' && commandIdentified.current != " ") {
-      const clean_input = document.getElementById('user_prompt') as HTMLInputElement;
-      clean_input.value = "";
       console.log(commandIdentified.current);
       commandSent.current = false;
-      setUserInput("");
-      // here the command should be sent off somewhere else before cleaning it, same goes to the other times i do the line below
-      commandIdentified.current = " "
+      const to_substract: string = firstCommand.current;
+      const terminal: string = terminalText;
+      body.current = (terminal.replace(to_substract, ""));
+      output = sendCommand(commandIdentified.current, body.current);
+      setTerminalText("");
+      const output_div = document.getElementById("output_div") as HTMLElement;
+      output_div.innerHTML = output;
+      firstCommand.current = " ";
+      commandIdentified.current = " ";
+      body.current = "";
     } else if (e.key == 'Enter' && commandIdentified.current == " ") {
-      const clean_input = document.getElementById('user_prompt') as HTMLInputElement;
-      clean_input.value = "";
       console.log("puerkesa de comando")
-      commandSent.current = false;
-      setUserInput("");
-      // here the command should be sent off somewhere else before cleaning it, same goes to the other times i do the line below
-      commandIdentified.current = " "
+      const output_div = document.getElementById("output_div") as HTMLElement;
+      output_div.innerHTML = `Error: command ${terminalText} not found`;
+      setTerminalText("");
+      commandIdentified.current = " ";
+      firstCommand.current = " ";
     } else if (e.key == 'Enter' && !commandSent.current) {
-      const clean_input = document.getElementById('user_prompt') as HTMLInputElement;
-      clean_input.value = "";
       console.log("puerkesa de comando")
-      // here the command should be sent off somewhere else before cleaning it, same goes to the other times i do the line below
-      commandIdentified.current = " "
+      commandIdentified.current = " ";
+      firstCommand.current = " ";
+      setTerminalText(" ");
+    } else if (e.key == ' ' && commandSent.current) {
     }
   }
 
-  const detectCommand = (userInput: string): void => {
-    console.log("el comando es: ", userInput);
-    switch (userInput) {
+  const sendCommand = (command: string, body: string): any => {
+    var output;
+    switch (command) {
       case "cat":
-        commandIdentified.current = userInput;
+        output = cat(isFile(body, currentDir));
         break;
       case "ls":
-        commandIdentified.current = userInput;
         break;
       case "cd":
-        commandIdentified.current = userInput;
         break;
       case "mkdir":
-        commandIdentified.current = userInput;
         break;
       case "rmdir":
-        commandIdentified.current = userInput;
+        break;
+      case "echo":
+        output = echo(body);
+        break;
+      default:
+        console.log("The command in the argument of sendCommand hasn't been interpreted");
+        break;
+    }
+    return output;
+  }
+
+  const detectCommand = (firstCommand: string): void => {
+    console.log("el comando es: ", firstCommand);
+    switch (firstCommand) {
+      case "cat":
+        commandIdentified.current = firstCommand;
+        break;
+      case "ls":
+        commandIdentified.current = firstCommand;
+        break;
+      case "cd":
+        commandIdentified.current = firstCommand;
+        break;
+      case "mkdir":
+        commandIdentified.current = firstCommand;
+        break;
+      case "rmdir":
+        commandIdentified.current = firstCommand;
+        break;
+      case "echo":
+        commandIdentified.current = firstCommand;
         break;
       default:
         console.log("No Commands Detected");
@@ -64,17 +103,15 @@ export default function terminal() {
     }
   }
 
-
   return (
     <div onKeyDown={detectKey}>
       <div id="prompt" className="container grid grid-cols-[auto_1fr] gap-1 text-white p-3 text-xl py-5">
         <div id="pwd" className="col-start-1 text-left text-3xl font-[Terminal]">
           ~/some/direction {">"}&nbsp;
         </div>
-        <form id="user_prompt_form">
-          <input id="user_prompt" value={userInput} placeholder="cat README" autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setUserInput(e.target.value)} />
-        </form>
+        <input id="user_prompt" value={terminalText} placeholder="try 'cat README'" autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setTerminalText(e.target.value)} />
       </div>
+      <div id="output_div" className="text-3xl font-[Terminal]"></div>
     </div>
   )
 }

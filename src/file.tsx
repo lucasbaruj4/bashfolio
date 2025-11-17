@@ -1,3 +1,5 @@
+import { Directory } from "./directory";
+
 export class File {
   name: string;
   contentArray: string[];
@@ -35,6 +37,15 @@ export function printContent(file: File) {
     text += item;
   }
   return text;
+}
+
+export function isFile(possibleFile: string, currentDirectory: Directory): File | number {
+  for (var value of currentDirectory.list.values()) {
+    if (value instanceof File && value.name == possibleFile) {
+      return value;
+    }
+  }
+  return 1;
 }
 
 

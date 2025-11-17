@@ -1,8 +1,12 @@
 import createFile, { File, appendContentFunction, printContent } from "./file";
-import createDirectory, { Directory, appendFileToDirectory, appendDirectorytoDirectory } from "./directory"
+import createDirectory, { Directory } from "./directory"
 
-export function cat(File: File) {
-  const filePassed = File;
+export function cat(file: File | any) {
+  if (!(file instanceof File)) {
+    var text = `Error: ${file} is not a real file`;
+    return text;
+  }
+  const filePassed = file;
   const catOutput = printContent(filePassed);
   return catOutput;
 }
@@ -10,6 +14,10 @@ export function cat(File: File) {
 export function mkdir(name: string) {
   const newDirectory = createDirectory(name);
   return newDirectory;
+}
+
+export function echo(content: string) {
+  return content;
 }
 
 export function touch(name: string) {

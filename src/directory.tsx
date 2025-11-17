@@ -3,7 +3,7 @@ import { File } from "./file";
 export class Directory {
   name: string;
   inode: number;
-  list: Map<number, string>;
+  list: Map<number, File | Directory>;
   isDirectory: boolean = true;
 
   constructor(name: string) {
@@ -12,8 +12,8 @@ export class Directory {
     this.list = new Map();
   }
 
-  appendElementDirectory(inode: number, name: string) {
-    this.list.set(inode, name);
+  appendElementDirectory(inode: number, Element: File | Directory) {
+    this.list.set(inode, Element);
   }
 
 
@@ -24,12 +24,5 @@ export default function createDirectory(name: string) {
   return newDirectory;
 }
 
-export function appendFileToDirectory(File: File, Directory: Directory) {
-  Directory.appendElementDirectory(File.inode, File.name);
-}
-
-export function appendDirectorytoDirectory(Directory: Directory) {
-  Directory.appendElementDirectory(Directory.inode, Directory.name);
-}
 
 
