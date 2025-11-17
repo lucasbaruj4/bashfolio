@@ -25,6 +25,14 @@ export function touch(name: string) {
   return newFile;
 }
 
+export function ls(currentDirectory: Directory): Array<string> {
+  var arrayReturnedNames = [];
+  for (var value of currentDirectory.list.values()) {
+    arrayReturnedNames.push(value.name);
+  }
+  return arrayReturnedNames;
+}
+
 export function greaterThan(file: File | any, content: string) {
   if (!(file instanceof File)) {
     var text = `File ${file}`;

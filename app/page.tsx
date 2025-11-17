@@ -4,7 +4,7 @@ import { appendContentFunction, } from "@src/file";
 import { Directory } from "@src/directory";
 import { File, isFile } from "@src/file";
 import { useState, useRef } from "react";
-import { cat, echo, mkdir, touch, greaterThan } from "@src/commands";
+import { cat, echo, ls, mkdir, touch, greaterThan } from "@src/commands";
 
 var rootDirectory = new Directory("/");
 function initializeRootDirectory(rootDirectory: Directory): void {
@@ -19,8 +19,8 @@ function initializeRootDirectory(rootDirectory: Directory): void {
   rootDirectory.appendElementDirectory(Future_Plans.inode, Future_Plans);
 }
 
+initializeRootDirectory(rootDirectory);
 export default function terminal() {
-  initializeRootDirectory(rootDirectory);
   var commandSent = useRef(false);
   const [currentDir, setCurrentDir] = useState(rootDirectory);
   const [terminalText, setTerminalText] = useState("");
@@ -89,7 +89,12 @@ export default function terminal() {
         output = cat(isFile(body, currentDir));
         break;
       case "ls":
-        // output = ls(body); we have to create ls
+        output = ls(currentDir);
+        var copyOutput = output;
+        output = "";
+        for (var value of copyOutput) {
+          output += value + "  ";
+        }
         break;
       case "cd":
         break;
