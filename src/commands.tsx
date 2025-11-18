@@ -20,9 +20,10 @@ export function echo(content: string) {
   return content;
 }
 
-export function touch(name: string) {
+export function touch(name: string, currentDir: Directory): string {
   const newFile = createFile(name);
-  return newFile;
+  currentDir.appendElementDirectory(newFile.inode, newFile);
+  return "";
 }
 
 export function ls(currentDirectory: Directory): Array<string> {

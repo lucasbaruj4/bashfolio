@@ -76,11 +76,12 @@ export default function terminal() {
       if (terminalText == "clear") {
         setTerminalText(" ");
         setPrompts([]);
+        commandIdentified.current = "";
         commandSent.current = false;
         window.location.reload();
       } else {
         const detect_verdict = detectCommand(terminalText);
-        if (detect_verdict == true) {
+        if (detect_verdict) {
           var fake_body = "";
           // console.log("sending to send command", terminalText, fake_body);
           const output = sendCommand(terminalText, fake_body);
@@ -90,10 +91,10 @@ export default function terminal() {
           setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
           // console.log("states after sending ls", "command Identified: ", commandIdentified.current, "commandSent = ", commandSent.current);
           commandSent.current = false;
-        } else {
+        } else if (!detect_verdict) {
           commandIdentified.current = "";
           firstCommand.current = "";
-          setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} not found`, textSent: terminalText }]);
+          setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} hasn't received an argument`, textSent: terminalText }]);
           setTerminalText("");
           commandSent.current = false;
         }
@@ -139,22 +140,22 @@ export default function terminal() {
     switch (firstCommand) {
       case "cat":
         commandIdentified.current = firstCommand;
-        break;
+        return false;
       case "ls":
         commandIdentified.current = firstCommand;
         return true;
       case "cd":
         commandIdentified.current = firstCommand;
-        break;
+        return false;
       case "mkdir":
         commandIdentified.current = firstCommand;
-        break;
+        return false;
       case "rmdir":
         commandIdentified.current = firstCommand;
-        break;
+        return false;
       case "echo":
         commandIdentified.current = firstCommand;
-        break;
+        return false;
       case "clear":
         commandIdentified.current = firstCommand;
         break;
