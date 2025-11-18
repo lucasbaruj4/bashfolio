@@ -66,17 +66,17 @@ export default function terminal() {
       body.current = "";
       setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
       setTerminalText("");
-      // GETS CLEANED
     } else if (e.key == 'Enter' && commandSent.current && !commandIdentified.current) {
       commandIdentified.current = "";
       firstCommand.current = "";
       setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} not found`, textSent: terminalText }]);
       setTerminalText("");
-      // GETS CLEANED
+      commandSent.current = false;
     } else if (e.key == 'Enter' && !commandSent.current) {
       if (terminalText == "clear") {
         setTerminalText(" ");
         setPrompts([]);
+        commandSent.current = false;
         window.location.reload();
       } else {
         const detect_verdict = detectCommand(terminalText);
@@ -89,12 +89,13 @@ export default function terminal() {
           firstCommand.current = "";
           setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
           // console.log("states after sending ls", "command Identified: ", commandIdentified.current, "commandSent = ", commandSent.current);
+          commandSent.current = false;
         } else {
           commandIdentified.current = "";
           firstCommand.current = "";
           setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} not found`, textSent: terminalText }]);
-          // GETS CLEANED
           setTerminalText("");
+          commandSent.current = false;
         }
       }
     }
