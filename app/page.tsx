@@ -2,10 +2,10 @@
 import CreateFile from "@src/file";
 import { createElement } from "react";
 import { appendContentFunction, } from "@src/file";
-import { Directory } from "@src/directory";
+import { Directory, isDirectory } from "@src/directory";
 import { File, isFile } from "@src/file";
 import { useState, useRef } from "react";
-import { cat, echo, ls, mkdir, touch, greaterThan } from "@src/commands";
+import { cat, echo, ls, cd, mkdir, touch, greaterThan } from "@src/commands";
 import Path from "@src/path";
 
 
@@ -74,11 +74,11 @@ export default function terminal() {
       commandSent.current = false;
     } else if (e.key == 'Enter' && !commandSent.current) {
       if (terminalText == "clear") {
-        setTerminalText(" ");
+        setTerminalText("");
         setPrompts([]);
         commandIdentified.current = "";
         commandSent.current = false;
-        window.location.reload();
+        firstCommand.current = "";
       } else {
         const detect_verdict = detectCommand(terminalText);
         if (detect_verdict) {
@@ -117,16 +117,32 @@ export default function terminal() {
         }
         break;
       case "cd":
+        const output_isDirectory = isDirectory(body, currentDir);
+        var output_cd: Map<string, Directory | string>;
+        var newPath: any;
+        var newDirectory: any;
+        if (output_isDirectory instanceof Directory) {
+          output_cd = cd(output_isDirectory, rootDirectory, currentPath.current);
+          newPath = output_cd.get("newPath");
+          newDirectory = output_cd.get("newDirectory");
+          currentPath.current = newPath;
+          setCurrentDir(newDirectory);
+        } else {
+          output = `Error: ${body} is not a directory`;
+        }
         break;
       case "mkdir":
+        output = mkdir(body, currentDir);
         break;
       case "rmdir":
         break;
       case "clear":
-        window.location.reload();
         break;
       case "echo":
         output = echo(body);
+        break;
+      case "touch":
+        output = touch(body, currentDir);
         break;
       default:
         console.log("The command in the argument of sendCommand hasn't been interpreted");
@@ -159,6 +175,9 @@ export default function terminal() {
       case "clear":
         commandIdentified.current = firstCommand;
         break;
+      case "touch":
+        commandIdentified.current = firstCommand;
+        return false;
       default:
         console.log("No Commands Detected");
         commandIdentified.current = "";

@@ -7,6 +7,9 @@ export default function Path(rootDirectory: Directory, currentDir: Directory, pr
   } else if (previousPath) {
     previousPath += currentDir.name;
     return previousPath;
+  } else if (currentDir) {
+    pathString = rootDirectory.name + currentDir.name;
+    return pathString;
   }
   return "Path not found";
 }

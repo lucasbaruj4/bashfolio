@@ -25,4 +25,13 @@ export default function createDirectory(name: string) {
 }
 
 
+export function isDirectory(possibleDirectory: string, currentDirectory: Directory): Directory | string {
+  for (var value of currentDirectory.list.values()) {
+    if (value instanceof Directory && value.name == possibleDirectory) {
+      return value;
+    }
+  }
+  return possibleDirectory;
+}
+
 

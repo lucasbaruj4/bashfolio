@@ -1,5 +1,6 @@
 import createFile, { File, appendContentFunction, printContent } from "./file";
 import createDirectory, { Directory } from "./directory"
+import Path from "./path";
 
 export function cat(file: File | any) {
   if (!(file instanceof File)) {
@@ -11,9 +12,10 @@ export function cat(file: File | any) {
   return catOutput;
 }
 
-export function mkdir(name: string) {
+export function mkdir(name: string, currentDir: Directory) {
   const newDirectory = createDirectory(name);
-  return newDirectory;
+  currentDir.appendElementDirectory(newDirectory.inode, newDirectory);
+  return "";
 }
 
 export function echo(content: string) {
@@ -43,3 +45,11 @@ export function greaterThan(file: File | any, content: string) {
   return file;
 }
 
+export function cd(cdingInto: Directory, rootDirectory: Directory, previousPath: string): Map<string, Directory | string> {
+  var newPath = Path(rootDirectory, cdingInto, previousPath);
+  var outputMap = new Map();
+  outputMap.set("newPath", newPath);
+  outputMap.set("newDirectory", cdingInto)
+  return outputMap;
+
+}
