@@ -38,7 +38,7 @@ export default function terminal() {
   const [terminalText, setTerminalText] = useState("");
   const firstCommand = useRef("");
   const body = useRef("");
-  var commandIdentified = useRef("");
+  var commandIdentified = useRef(" ");
 
   const detectKey = (e: any) => {
     var output: string;
@@ -46,30 +46,32 @@ export default function terminal() {
       commandSent.current = true;
       firstCommand.current = terminalText;
       detectCommand(firstCommand.current);
-    } else if (e.key == 'Enter' && commandIdentified.current) {
-      // console.log(commandIdentified.current);
+    } else if (e.key == 'Enter' && commandIdentified.current != " ") {
+      console.log(commandIdentified.current);
       commandSent.current = false;
       const to_substract: string = firstCommand.current + " ";
       const terminal: string = terminalText;
       body.current = (terminal.replace(to_substract, ""));
       output = sendCommand(commandIdentified.current, body.current);
       if (commandIdentified.current == "clear") {
-        firstCommand.current = "";
-        commandIdentified.current = "";
+        firstCommand.current = " ";
+        commandIdentified.current = " ";
         body.current = "";
         setPrompts(old => [...old, { cwd: currentPath.current, output: "", textSent: terminalText }]);
         setTerminalText("");
+        // GETS CLEANED
         return;
       }
-      firstCommand.current = "";
-      commandIdentified.current = "";
+      firstCommand.current = " ";
+      commandIdentified.current = " ";
       body.current = "";
       setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
       setTerminalText("");
       // GETS CLEANED
-    } else if (e.key == 'Enter' && commandSent.current && !commandIdentified.current) {
-      commandIdentified.current = "";
-      firstCommand.current = "";
+    } else if (e.key == 'Enter' && commandSent.current && commandIdentified.current == " ") {
+      console.log("puerkesa de comando")
+      commandIdentified.current = " ";
+      firstCommand.current = " ";
       setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} not found`, textSent: terminalText }]);
       setTerminalText("");
       // GETS CLEANED
@@ -82,16 +84,11 @@ export default function terminal() {
         const detect_verdict = detectCommand(terminalText);
         if (detect_verdict == true) {
           var fake_body = "";
-          // console.log("sending to send command", terminalText, fake_body);
           const output = sendCommand(terminalText, fake_body);
-          setTerminalText("");
-          commandIdentified.current = "";
-          firstCommand.current = "";
           setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
-          // console.log("states after sending ls", "command Identified: ", commandIdentified.current, "commandSent = ", commandSent.current);
         } else {
-          commandIdentified.current = "";
-          firstCommand.current = "";
+          commandIdentified.current = " ";
+          firstCommand.current = " ";
           setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} not found`, textSent: terminalText }]);
           // GETS CLEANED
           setTerminalText("");
@@ -159,7 +156,7 @@ export default function terminal() {
         break;
       default:
         console.log("No Commands Detected");
-        commandIdentified.current = "";
+        commandIdentified.current = " ";
         break;
     }
   }
@@ -193,7 +190,6 @@ export default function terminal() {
   }
 
   function cleanTerminal(e: any) {
-    // console.log("change on pastprompts div, must clean terminal text");
     setTerminalText("");
   }
 
