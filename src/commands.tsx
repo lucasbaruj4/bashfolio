@@ -38,7 +38,7 @@ export function ls(currentDirectory: Directory): Array<string> {
 
 export function greaterThan(file: File | any, content: string) {
   if (!(file instanceof File)) {
-    var text = `File ${file}`;
+    var text = `Error : ${file} is not a real file`;
     return text;
   }
   file.appendContent(content);

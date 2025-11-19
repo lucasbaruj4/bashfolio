@@ -28,6 +28,7 @@ var rootPath = Path(rootDirectory, rootDirectory);
 export default function terminal() {
 
   const currentPath = useRef(rootPath);
+  const possibleGreaterThan = useRef(false);
   const [pastPrompts, setPrompts] = useState<Array<{
     cwd: string,
     output: string,
@@ -42,45 +43,69 @@ export default function terminal() {
 
   const detectKey = (e: any) => {
     var output: string;
-    if (e.key == " " && !commandSent.current) {
-      commandSent.current = true;
-      firstCommand.current = terminalText;
+    if (e.key == " " && !commandSent.current) { // FIRST SPACE PRESSED 
+      commandSent.current = true; firstCommand.current = terminalText;
       detectCommand(firstCommand.current);
-    } else if (e.key == 'Enter' && commandIdentified.current) {
+    } else if (e.key == " " && commandSent.current) {// SECOND SPACE PRESSED (possible greater than)
+      possibleGreaterThan.current = true; // probably useless...
+    } else if (e.key == 'Enter' && commandIdentified.current) { // ENTER WITH COMMAND IDENTIFIED
       // console.log(commandIdentified.current);
       commandSent.current = false;
       const to_substract: string = firstCommand.current + " ";
       const terminal: string = terminalText;
-      body.current = (terminal.replace(to_substract, ""));
+      body.current = (terminal.replace(to_substract, "")); // BODY IS WHAT'S WRITTEN AFTER THE FIRST COMMAND
       output = sendCommand(commandIdentified.current, body.current);
-      if (commandIdentified.current == "clear") {
+      if (commandIdentified.current == "clear") { //IF THE COMMAND WRITTEN IS CLEAR
         firstCommand.current = "";
         commandIdentified.current = "";
         body.current = "";
         setPrompts(old => [...old, { cwd: currentPath.current, output: "", textSent: terminalText }]);
         setTerminalText("");
         return;
+      } else if ((body.current.includes(">"))) { // IF  THE BODY INCLUDES A GREATHER THAN SIGN
+        var untouched_body = body.current;
+        untouched_body = untouched_body.slice(untouched_body.indexOf(commandIdentified.current) + 1, untouched_body.indexOf(">"));
+        untouched_body = untouched_body.trim();
+        var extraOutput = sendCommand(commandIdentified.current, untouched_body);
+        var afterBody = body.current.slice(body.current.indexOf(">") + 1);
+        afterBody = afterBody.trim();
+        var possible_file: any = isFile(afterBody, currentDir);
+        if (possible_file instanceof File) { // IF THE BODY FOUND AFTER THE GREATER SIGN IS A FILE
+          var greaterThanResult: File | string = greaterThan(possible_file, extraOutput);
+          firstCommand.current = "";
+          commandIdentified.current = "";
+          body.current = "";
+          setTerminalText("");
+          setPrompts(old => [...old, { cwd: currentPath.current, output: "", textSent: terminalText }]);
+        } else if (possible_file instanceof String) { // IF THE BODY FOUND AFTER THE GREATER SIGN IS A FILE
+          firstCommand.current = "";
+          commandIdentified.current = "";
+          body.current = "";
+          setTerminalText("");
+          setPrompts(old => [...old, { cwd: currentPath.current, output: `Error : ${possible_file} is not a real file`, textSent: terminalText }]);
+        }
+      } else { // IF THE COMMAND WRITTEN IS NOT CLEAR, OR NOT GREATER THAN 
+        firstCommand.current = "";
+        commandIdentified.current = "";
+        body.current = "";
+        setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
+        setTerminalText("");
       }
-      firstCommand.current = "";
-      commandIdentified.current = "";
-      body.current = "";
-      setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
-      setTerminalText("");
-    } else if (e.key == 'Enter' && commandSent.current && !commandIdentified.current) {
+    } else if (e.key == 'Enter' && commandSent.current && !commandIdentified.current) { // ENTER WITH A COMMAND SEND THAT HASN'T BEEN IDENTIFIED
       commandIdentified.current = "";
       firstCommand.current = "";
       setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} not found`, textSent: terminalText }]);
       setTerminalText("");
       commandSent.current = false;
-    } else if (e.key == 'Enter' && !commandSent.current) {
-      if (terminalText == "clear") {
+    } else if (e.key == 'Enter' && !commandSent.current) { // ENTER WITHOUT COMMAND SENT, MEANING ENTER WITHOUT HAVING PRESSED SPACE FIRST
+      if (terminalText == "clear") { // SPECIAL CASE FOR CLEAR
         setTerminalText("");
         setPrompts([]);
         commandIdentified.current = "";
         commandSent.current = false;
         firstCommand.current = "";
       } else {
-        const detect_verdict = detectCommand(terminalText);
+        const detect_verdict = detectCommand(terminalText); // IF IT RETURNS TRUE, IT'S A COMMAND THAT CAN RUN WITHOUT ARGUMENTS 
         if (detect_verdict) {
           var fake_body = "";
           // console.log("sending to send command", terminalText, fake_body);
@@ -91,7 +116,7 @@ export default function terminal() {
           setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
           // console.log("states after sending ls", "command Identified: ", commandIdentified.current, "commandSent = ", commandSent.current);
           commandSent.current = false;
-        } else if (!detect_verdict) {
+        } else if (!detect_verdict) { // IF IT RETURNS FALSE IT'S JUST A BAD COMMAND
           commandIdentified.current = "";
           firstCommand.current = "";
           setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} hasn't received an argument`, textSent: terminalText }]);
