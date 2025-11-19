@@ -13,3 +13,9 @@ export default function Path(rootDirectory: Directory, currentDir: Directory, pr
   }
   return "Path not found";
 }
+
+export function removePath(previousPath: string): string {
+  var finalPath;
+  finalPath = previousPath.slice(0, previousPath.lastIndexOf("/", previousPath.length - 5));
+  return finalPath;
+} 

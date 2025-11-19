@@ -6,7 +6,7 @@ import { Directory, isDirectory } from "@src/directory";
 import { File, isFile } from "@src/file";
 import { useState, useRef } from "react";
 import { cat, echo, ls, cd, mkdir, touch, greaterThan } from "@src/commands";
-import Path from "@src/path";
+import Path, { removePath } from "@src/path";
 
 
 
@@ -29,13 +29,15 @@ export default function terminal() {
 
   const currentPath = useRef(rootPath);
   const possibleGreaterThan = useRef(false);
+  const fatherDirectory = useRef(rootDirectory);
+  const positionLog = useRef(new Map());
   const [pastPrompts, setPrompts] = useState<Array<{
     cwd: string,
     output: string,
     textSent: string
   }>>([]);
   var commandSent = useRef(false);
-  const [currentDir, setCurrentDir] = useState(rootDirectory);
+  const currentDir = useRef(rootDirectory);
   const [terminalText, setTerminalText] = useState("");
   const firstCommand = useRef("");
   const body = useRef("");
@@ -62,6 +64,20 @@ export default function terminal() {
         setPrompts(old => [...old, { cwd: currentPath.current, output: "", textSent: terminalText }]);
         setTerminalText("");
         return;
+      } else if (commandIdentified.current == "cd") { //IF THE COMMAND WRITTEN IS CD  
+        if (body.current.includes("..")) { // IF THE BODY IS ".."
+          firstCommand.current = "";
+          commandIdentified.current = "";
+          body.current = "";
+          setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
+          setTerminalText("");
+        } else {
+          firstCommand.current = "";
+          commandIdentified.current = "";
+          body.current = "";
+          setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
+          setTerminalText("");
+        }
       } else if ((body.current.includes(">"))) { // IF  THE BODY INCLUDES A GREATHER THAN SIGN
         var untouched_body = body.current;
         untouched_body = untouched_body.slice(untouched_body.indexOf(commandIdentified.current) + 1, untouched_body.indexOf(">"));
@@ -69,7 +85,7 @@ export default function terminal() {
         var extraOutput = sendCommand(commandIdentified.current, untouched_body);
         var afterBody = body.current.slice(body.current.indexOf(">") + 1);
         afterBody = afterBody.trim();
-        var possible_file: any = isFile(afterBody, currentDir);
+        var possible_file: any = isFile(afterBody, currentDir.current);
         if (possible_file instanceof File) { // IF THE BODY FOUND AFTER THE GREATER SIGN IS A FILE
           var greaterThanResult: File | string = greaterThan(possible_file, extraOutput);
           firstCommand.current = "";
@@ -131,10 +147,10 @@ export default function terminal() {
     var output;
     switch (command) {
       case "cat":
-        output = cat(isFile(body, currentDir));
+        output = cat(isFile(body, currentDir.current));
         break;
       case "ls":
-        output = ls(currentDir);
+        output = ls(currentDir.current);
         var copyOutput = output;
         output = "";
         for (var value of copyOutput) {
@@ -142,22 +158,47 @@ export default function terminal() {
         }
         break;
       case "cd":
-        const output_isDirectory = isDirectory(body, currentDir);
         var output_cd: Map<string, Directory | string>;
         var newPath: any;
         var newDirectory: any;
-        if (output_isDirectory instanceof Directory) {
-          output_cd = cd(output_isDirectory, rootDirectory, currentPath.current);
-          newPath = output_cd.get("newPath");
-          newDirectory = output_cd.get("newDirectory");
-          currentPath.current = newPath;
-          setCurrentDir(newDirectory);
+        if (body == "..") {
+          if (currentDir.current.name == "/") {
+            positionLog.current.clear();
+            output = `Error: you're already at root`;
+          } else {
+            output_cd = cd(fatherDirectory.current, rootDirectory, currentPath.current);
+            newPath = removePath(currentPath.current);
+            newDirectory = output_cd.get("newDirectory");
+            currentPath.current = newPath;
+            if (currentDir.current == fatherDirectory.current) { // THIS MEANS WE KNOW WE HAVE TO GO ONE "CHANGE" BEFORE 
+              var beforeFather;
+              for (const [key, value] of positionLog.current) {
+                if (value == currentDir.current) {
+                  beforeFather = key;
+                }
+              }
+              currentDir.current = beforeFather;
+            } else {
+              currentDir.current = fatherDirectory.current;
+            }
+          }
         } else {
-          output = `Error: ${body} is not a directory`;
+          const output_isDirectory = isDirectory(body, currentDir.current);
+          if (output_isDirectory instanceof Directory) {
+            output_cd = cd(output_isDirectory, rootDirectory, currentPath.current);
+            newPath = output_cd.get("newPath");
+            newDirectory = output_cd.get("newDirectory");
+            currentPath.current = newPath;
+            fatherDirectory.current = currentDir.current;
+            positionLog.current.set(currentDir.current, newDirectory);
+            currentDir.current = newDirectory;
+          } else {
+            output = `Error: ${body} is not a directory`;
+          }
         }
         break;
       case "mkdir":
-        output = mkdir(body, currentDir);
+        output = mkdir(body, currentDir.current);
         break;
       case "rmdir":
         break;
@@ -167,7 +208,7 @@ export default function terminal() {
         output = echo(body);
         break;
       case "touch":
-        output = touch(body, currentDir);
+        output = touch(body, currentDir.current);
         break;
       default:
         console.log("The command in the argument of sendCommand hasn't been interpreted");
