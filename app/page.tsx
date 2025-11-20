@@ -1,6 +1,6 @@
 'use client';
 import CreateFile from "@src/file";
-import { createElement } from "react";
+import { createElement, useEffect } from "react";
 import { appendContentFunction, } from "@src/file";
 import { Directory, isDirectory } from "@src/directory";
 import { File, isFile } from "@src/file";
@@ -13,14 +13,22 @@ import Path, { removePath } from "@src/path";
 var rootDirectory = new Directory("");
 function initializeRootDirectory(rootDirectory: Directory): void {
   var README = new File("README");
-  README.appendContent("hola me llamo lucas este es mi README bla bla bla");
+  README.appendContent("Hi!, My name is Lucas, I'm a developer with experience writing Python, JavaScript/TypeScript and C. I'm currently based in Berlin, Germany and I'm looking for an internship.\n My Developer style is honestly all over the place, I follow my own curiosity and passion, that's why I try to work only on things I find interesting.\n If you'd like to know more about what I do, check my github =>\n  https://github.com/lucasbaruj4 \n and also follow me on X =>\n https://x.com/baruthedev \n If you'd like to know more about how to use this project, which is called 'bashfolio', please cat the 'how_to' file in this directory.");
   var Berlin = new File("berlin_2025");
-  Berlin.appendContent("vivo en Berlin 2025");
-  var Future_Plans = new File("future_plans");
-  Future_Plans.appendContent("mis planes para el futuro son blnnfasdnasd");
+  Berlin.appendContent(`As of October 2025 I'm living in Berlin, Germany because of an exchange program with my Home University back at Paraguay.
+		       The city is cold, very cold, I'm gonna see the snow for the first time!, Germans are considered rude by some people but I think they're just missunderstood, I appreciate their idea of politeness = just don't bother anyone!. You get used to this city, and I rarely find myself missing home, I just hope I can work in something I enjoy here.`);
+  var How_To = new File("how_to");
+  How_To.appendContent(`This is Bashfolio, a pseudo terminal that "runs" bash, these are the commands that are current functional:\t
+			- cd (This command works for going into directories and you can go back to the father directory using 'cd ..')\t
+  			- ls (This command lets you list all files/directories in the current directory)\t
+  			- mkdir (This command lets you create a new directory named whatever you put as an argument)\t
+  			- touch (This command lets you create a new file in the current directory named whatever you put as an argument)\t
+  			- > (This command is the only way you can append content to a file, it takes the output of the previous command you used and then put it on the file you want to append the content to)\t
+			- echo (This command works for printing a string that you pass as an argument after the command)\t
+			More commands are coming depending on my free time! If you'd like to contribute to this project please write me an email to barujalucas0@gmail.com, if enough people contact me I'll make this pseudo terminal open source. Have fun! `);
   rootDirectory.appendElementDirectory(README.inode, README);
   rootDirectory.appendElementDirectory(Berlin.inode, Berlin);
-  rootDirectory.appendElementDirectory(Future_Plans.inode, Future_Plans);
+  rootDirectory.appendElementDirectory(How_To.inode, How_To);
 }
 
 initializeRootDirectory(rootDirectory);
@@ -28,6 +36,7 @@ var rootPath = Path(rootDirectory, rootDirectory);
 export default function terminal() {
 
   const currentPath = useRef(rootPath);
+  const inputFocus = useRef<HTMLInputElement>(null);
   const showReadmePlaceHolder = useRef(true);
   const possibleGreaterThan = useRef(false);
   const fatherDirectory = useRef(rootDirectory);
@@ -264,6 +273,7 @@ export default function terminal() {
 
   function createCurrentPrompt({ cwd, output }: { cwd: string, output: string }, showReadmePlaceHolder?: boolean) {
     var placeholder = 'write "cat README"';
+
     if (!showReadmePlaceHolder || currentDir.current.name != "/") {
       placeholder = '';
     }
@@ -274,12 +284,17 @@ export default function terminal() {
           <div id="current_pwd" className="col-start-1 text-left text-3xl font-[Terminal]">
             {cwd} {">"}&nbsp;
           </div>
-          <input id="current_user_prompt" value={terminalText} placeholder={placeholder} autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setTerminalText(e.target.value)} />
+          <input id="current_user_prompt" value={terminalText} placeholder={placeholder} autoFocus ref={inputFocus} type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setTerminalText(e.target.value)} />
         </div>
         <div id="current_output_div" className="text-3xl font-[Terminal]"> {output} </div>
       </div>
     )
   }
+
+  useEffect(() => {
+    inputFocus.current?.focus();
+  }, []);
+
 
   function createPastPrompt({ cwd, output, textSent }: { cwd: string, output: string, textSent: string }) {
     return (
@@ -290,7 +305,7 @@ export default function terminal() {
           </div>
           <div id="user_prompt" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent">{textSent}</div>
         </div>
-        <div id="output_div" className="text-3xl font-[Terminal]"> {output} </div>
+        <div id="output_div"  className="whitespace-pre-wrap text-3xl font-[Terminal]"> {output} </div>
       </div>
     )
   }
