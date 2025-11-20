@@ -28,6 +28,7 @@ var rootPath = Path(rootDirectory, rootDirectory);
 export default function terminal() {
 
   const currentPath = useRef(rootPath);
+  const showReadmePlaceHolder = useRef(true);
   const possibleGreaterThan = useRef(false);
   const fatherDirectory = useRef(rootDirectory);
   const positionLog = useRef(new Map());
@@ -100,7 +101,17 @@ export default function terminal() {
           setTerminalText("");
           setPrompts(old => [...old, { cwd: currentPath.current, output: `Error : ${possible_file} is not a real file`, textSent: terminalText }]);
         }
-      } else { // IF THE COMMAND WRITTEN IS NOT CLEAR, OR NOT GREATER THAN 
+      } else if (commandIdentified.current == "cat" && body.current.includes("README")) { // IF THE COMMAND IS CAT README ON ROOT
+        if (currentDir.current.name == "/") {
+          showReadmePlaceHolder.current = false;
+          firstCommand.current = "";
+          commandIdentified.current = "";
+          body.current = "";
+          setTerminalText("");
+          setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
+        }
+      }
+      else { // IF THE COMMAND WRITTEN IS NOT CLEAR, OR NOT GREATER THAN 
         firstCommand.current = "";
         commandIdentified.current = "";
         body.current = "";
@@ -251,14 +262,19 @@ export default function terminal() {
     }
   }
 
-  function createCurrentPrompt({ cwd, output }: { cwd: string, output: string }) {
+  function createCurrentPrompt({ cwd, output }: { cwd: string, output: string }, showReadmePlaceHolder?: boolean) {
+    var placeholder = 'write "cat README"';
+    if (!showReadmePlaceHolder || currentDir.current.name != "/") {
+      placeholder = '';
+    }
+
     return (
       <div onKeyDown={detectKey}>
         <div id="current_prompt" className="container grid grid-cols-[auto_1fr] gap-1 text-white p-3 text-xl py-5">
           <div id="current_pwd" className="col-start-1 text-left text-3xl font-[Terminal]">
             {cwd} {">"}&nbsp;
           </div>
-          <input id="current_user_prompt" value={terminalText} placeholder="try 'cat README'" autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setTerminalText(e.target.value)} />
+          <input id="current_user_prompt" value={terminalText} placeholder={placeholder} autoFocus type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setTerminalText(e.target.value)} />
         </div>
         <div id="current_output_div" className="text-3xl font-[Terminal]"> {output} </div>
       </div>
@@ -292,7 +308,7 @@ export default function terminal() {
             {createPastPrompt(eachPromptValues)}
           </div>)}
 
-      {createCurrentPrompt({ cwd: currentPath.current, output: "" })}
+      {createCurrentPrompt({ cwd: currentPath.current, output: "" }, showReadmePlaceHolder.current)}
     </div>
   )
 }
