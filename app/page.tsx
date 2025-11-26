@@ -1,15 +1,17 @@
 'use client';
-import CreateFile from "@src/file";
-import { createElement, useEffect } from "react";
-import { appendContentFunction, } from "@src/file";
+import { useEffect, useState, useRef } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Directory, isDirectory } from "@src/directory";
 import { File, isFile } from "@src/file";
-import { useState, useRef } from "react";
 import { cat, echo, ls, cd, mkdir, touch, greaterThan, CommandOutput } from "@src/commands";
 import Path, { removePath } from "@src/path";
 import TerminalOutput from "@src/terminal-output";
+import { parseCommand, type ParsedCommand } from "@src/parser";
 
 
+
+const SUPPORTED_COMMANDS = new Set(["cat", "ls", "cd", "mkdir", "rmdir", "echo", "touch", "clear"]);
+const COMMANDS_REQUIRING_ARGS = new Set(["cat", "cd", "mkdir", "rmdir", "echo", "touch"]);
 
 const readmeFile = new File("README", "markdown");
 var rootDirectory = new Directory("");
@@ -39,7 +41,6 @@ export default function terminal() {
   const currentPath = useRef(rootPath);
   const inputFocus = useRef<HTMLInputElement>(null);
   const showReadmePlaceHolder = useRef(true);
-  const possibleGreaterThan = useRef(false);
   const fatherDirectory = useRef(rootDirectory);
   const positionLog = useRef(new Map());
   const [pastPrompts, setPrompts] = useState<Array<{
@@ -47,129 +48,80 @@ export default function terminal() {
     output: CommandOutput,
     textSent: string
   }>>([]);
-  var commandSent = useRef(false);
   const currentDir = useRef(rootDirectory);
   const [terminalText, setTerminalText] = useState("");
-  const firstCommand = useRef("");
-  const body = useRef("");
-  var commandIdentified = useRef("");
   const logPrompt = (output: CommandOutput, textSent: string) => {
     setPrompts(old => [...old, { cwd: currentPath.current, output, textSent }]);
   };
 
-  const detectKey = (e: any) => {
-    var output: CommandOutput;
-    if (e.key == " " && !commandSent.current) { // FIRST SPACE PRESSED 
-      commandSent.current = true; firstCommand.current = terminalText;
-      detectCommand(firstCommand.current);
-    } else if (e.key == " " && commandSent.current) {// SECOND SPACE PRESSED (possible greater than)
-      possibleGreaterThan.current = true; // probably useless...
-    } else if (e.key == 'Enter' && commandIdentified.current) { // ENTER WITH COMMAND IDENTIFIED
-      // console.log(commandIdentified.current);
-      commandSent.current = false;
-      const to_substract: string = firstCommand.current + " ";
-      const terminal: string = terminalText;
-      body.current = (terminal.replace(to_substract, "")); // BODY IS WHAT'S WRITTEN AFTER THE FIRST COMMAND
-      output = sendCommand(commandIdentified.current, body.current);
-      if (commandIdentified.current == "clear") { //IF THE COMMAND WRITTEN IS CLEAR
-        firstCommand.current = "";
-        commandIdentified.current = "";
-        body.current = "";
-        logPrompt({ text: "" }, terminalText);
+  const processCurrentInput = () => {
+    const rawInput = terminalText;
+    if (!rawInput.trim()) {
+      setTerminalText("");
+      return;
+    }
+
+    const parsedResult = parseCommand(rawInput);
+    if (parsedResult.error) {
+      if (parsedResult.error === "No command provided") {
         setTerminalText("");
         return;
-      } else if (commandIdentified.current == "cd") { //IF THE COMMAND WRITTEN IS CD  
-        if (body.current.includes("..")) { // IF THE BODY IS ".."
-          firstCommand.current = "";
-          commandIdentified.current = "";
-          body.current = "";
-          logPrompt(output, terminalText);
-          setTerminalText("");
-        } else {
-          firstCommand.current = "";
-          commandIdentified.current = "";
-          body.current = "";
-          logPrompt(output, terminalText);
-          setTerminalText("");
-        }
-      } else if ((body.current.includes(">"))) { // IF  THE BODY INCLUDES A GREATHER THAN SIGN
-        var untouched_body = body.current;
-        untouched_body = untouched_body.slice(untouched_body.indexOf(commandIdentified.current) + 1, untouched_body.indexOf(">"));
-        untouched_body = untouched_body.trim();
-        var extraOutput = sendCommand(commandIdentified.current, untouched_body);
-        var afterBody = body.current.slice(body.current.indexOf(">") + 1);
-        afterBody = afterBody.trim();
-        var possible_file: any = isFile(afterBody, currentDir.current);
-        if (possible_file instanceof File) { // IF THE BODY FOUND AFTER THE GREATER SIGN IS A FILE
-          greaterThan(possible_file, extraOutput.text ?? "");
-          firstCommand.current = "";
-          commandIdentified.current = "";
-          body.current = "";
-          setTerminalText("");
-          logPrompt({ text: "" }, terminalText);
-        } else if (possible_file instanceof String) { // IF THE BODY FOUND AFTER THE GREATER SIGN IS A FILE
-          firstCommand.current = "";
-          commandIdentified.current = "";
-          body.current = "";
-          setTerminalText("");
-          logPrompt({ text: `Error : ${possible_file} is not a real file` }, terminalText);
-        }
-      } else if (commandIdentified.current == "cat" && body.current.includes("README")) { // IF THE COMMAND IS CAT README ON ROOT
-        if (currentDir.current.name == "/") {
-          showReadmePlaceHolder.current = false;
-          firstCommand.current = "";
-          commandIdentified.current = "";
-          body.current = "";
-          setTerminalText("");
-          logPrompt(output, terminalText);
-        }
       }
-      else { // IF THE COMMAND WRITTEN IS NOT CLEAR, OR NOT GREATER THAN 
-        firstCommand.current = "";
-        commandIdentified.current = "";
-        body.current = "";
-        logPrompt(output, terminalText);
-        setTerminalText("");
-      }
-    } else if (e.key == 'Enter' && commandSent.current && !commandIdentified.current) { // ENTER WITH A COMMAND SEND THAT HASN'T BEEN IDENTIFIED
-      commandIdentified.current = "";
-      firstCommand.current = "";
-      logPrompt({ text: `Error: command ${terminalText} not found` }, terminalText);
+      logPrompt({ text: `Error: ${parsedResult.error}` }, rawInput);
       setTerminalText("");
-      commandSent.current = false;
-    } else if (e.key == 'Enter' && !commandSent.current) { // ENTER WITHOUT COMMAND SENT, MEANING ENTER WITHOUT HAVING PRESSED SPACE FIRST
-      if (terminalText == "clear") { // SPECIAL CASE FOR CLEAR
-        setTerminalText("");
-        setPrompts([]);
-        commandIdentified.current = "";
-        commandSent.current = false;
-        firstCommand.current = "";
-      } else {
-        const detect_verdict = detectCommand(terminalText); // IF IT RETURNS TRUE, IT'S A COMMAND THAT CAN RUN WITHOUT ARGUMENTS 
-        if (detect_verdict) {
-          var fake_body = "";
-          // console.log("sending to send command", terminalText, fake_body);
-          const commandOutput = sendCommand(terminalText, fake_body);
-          setTerminalText("");
-          commandIdentified.current = "";
-          firstCommand.current = "";
-          logPrompt(commandOutput, terminalText);
-          // console.log("states after sending ls", "command Identified: ", commandIdentified.current, "commandSent = ", commandSent.current);
-          commandSent.current = false;
-        } else if (!detect_verdict) { // IF IT RETURNS FALSE IT'S JUST A BAD COMMAND
-          commandIdentified.current = "";
-          firstCommand.current = "";
-          logPrompt({ text: `Error: command ${terminalText} hasn't received an argument` }, terminalText);
-          setTerminalText("");
-          commandSent.current = false;
-        }
-      }
+      return;
     }
-  }
 
-  const sendCommand = (command: string, body: string): CommandOutput => {
-    var output: CommandOutput = { text: "" };
-    switch (command) {
+    runCommand(parsedResult.command, rawInput);
+  };
+
+  const detectKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Enter") {
+      return;
+    }
+    e.preventDefault();
+    processCurrentInput();
+  };
+
+  const runCommand = (command: ParsedCommand, rawInput: string) => {
+    if (command.name === "clear") {
+      setTerminalText("");
+      setPrompts([]);
+      return;
+    }
+
+    if (!SUPPORTED_COMMANDS.has(command.name)) {
+      logPrompt({ text: `Error: command ${command.name} not found` }, rawInput);
+      setTerminalText("");
+      return;
+    }
+
+    if (COMMANDS_REQUIRING_ARGS.has(command.name) && command.args.length === 0) {
+      logPrompt({ text: `Error: command ${command.name} hasn't received an argument` }, rawInput);
+      setTerminalText("");
+      return;
+    }
+
+    const output = sendCommand(command);
+
+    if (
+      command.name === "cat" &&
+      !command.redirectTarget &&
+      command.args.some((arg) => arg === "README") &&
+      currentDir.current.name == "/"
+    ) {
+      showReadmePlaceHolder.current = false;
+    }
+
+    logPrompt(output, rawInput);
+    setTerminalText("");
+  };
+
+  const sendCommand = (command: ParsedCommand): CommandOutput => {
+    const body = command.args.join(" ");
+    let output: CommandOutput = { text: "" };
+
+    switch (command.name) {
       case "cat":
         output = cat(isFile(body, currentDir.current));
         break;
@@ -245,42 +197,18 @@ export default function terminal() {
         output = { text: "" };
         break;
     }
-    return output;
-  }
 
-  const detectCommand = (firstCommand: string): void | boolean => {
-    console.log("el comando es: ", firstCommand);
-    switch (firstCommand) {
-      case "cat":
-        commandIdentified.current = firstCommand;
-        return false;
-      case "ls":
-        commandIdentified.current = firstCommand;
-        return true;
-      case "cd":
-        commandIdentified.current = firstCommand;
-        return false;
-      case "mkdir":
-        commandIdentified.current = firstCommand;
-        return false;
-      case "rmdir":
-        commandIdentified.current = firstCommand;
-        return false;
-      case "echo":
-        commandIdentified.current = firstCommand;
-        return false;
-      case "clear":
-        commandIdentified.current = firstCommand;
-        break;
-      case "touch":
-        commandIdentified.current = firstCommand;
-        return false;
-      default:
-        console.log("No Commands Detected");
-        commandIdentified.current = "";
-        break;
+    if (command.redirectTarget) {
+      const possibleFile = isFile(command.redirectTarget, currentDir.current);
+      if (possibleFile instanceof File) {
+        greaterThan(possibleFile, output.text ?? "");
+        return { text: "" };
+      }
+      return { text: `Error : ${command.redirectTarget} is not a real file` };
     }
-  }
+
+    return output;
+  };
 
   function createCurrentPrompt({ cwd, output }: { cwd: string, output: string }, showReadmePlaceHolder?: boolean) {
     var placeholder = 'write "cat README"';
