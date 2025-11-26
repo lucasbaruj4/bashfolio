@@ -7,6 +7,7 @@ import { File, isFile } from "@src/file";
 import { useState, useRef } from "react";
 import { cat, echo, ls, cd, mkdir, touch, greaterThan, CommandOutput } from "@src/commands";
 import Path, { removePath } from "@src/path";
+import TerminalOutput from "@src/terminal-output";
 
 
 
@@ -323,7 +324,6 @@ export default function terminal() {
 
 
   function createPastPrompt({ cwd, output, textSent }: { cwd: string, output: CommandOutput, textSent: string }) {
-    const outputText = output?.text ?? "";
     return (
       <div>
         <div id="prompt" className="container grid grid-cols-[auto_1fr] gap-1 text-white p-3 text-xl py-5">
@@ -332,16 +332,7 @@ export default function terminal() {
           </div>
           <div id="user_prompt" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent">{textSent}</div>
         </div>
-        {output?.images?.length ? (
-          <div className="mt-4 flex flex-col gap-4">
-            {output.images.map((image, index) => (
-              <div key={`${image.url}-${index}`} className="flex flex-col gap-2">
-                <img src={image.url} alt={image.alt} className="max-w-xs pb-4" />
-              </div>
-            ))}
-          </div>
-        ) : null}
-        <div id="output_div"  className="whitespace-pre-wrap text-2xl font-[Terminal]"> {outputText} </div>
+        <TerminalOutput output={output} />
       </div>
     )
   }

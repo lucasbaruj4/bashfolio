@@ -1,11 +1,12 @@
 import createFile, { File, appendContentFunction, printContent } from "./file";
 import createDirectory, { Directory } from "./directory"
 import Path from "./path";
-import { renderMarkdown, MarkdownImage } from "./markdown";
+import { renderMarkdown, MarkdownImage, MarkdownSegment } from "./markdown";
 
 export type CommandOutput = {
   text: string;
   images?: MarkdownImage[];
+  segments?: MarkdownSegment[];
 };
 
 export function cat(file: File | any): CommandOutput {
@@ -17,9 +18,9 @@ export function cat(file: File | any): CommandOutput {
   const rawOutput = printContent(filePassed).trimStart();
   if (filePassed.format === "markdown") {
     const rendered = renderMarkdown(rawOutput);
-    return { text: rendered.text, images: rendered.images };
+    return { text: rendered.text, images: rendered.images, segments: rendered.segments };
   }
-  return { text: rawOutput };
+  return { text: rawOutput, segments: [{ type: "text", content: rawOutput }] };
 }
 
 export function mkdir(name: string, currentDir: Directory) {
