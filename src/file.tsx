@@ -1,14 +1,18 @@
 import { Directory } from "./directory";
 
+export type FileFormat = "text" | "markdown";
+
 export class File {
   name: string;
   contentArray: string[];
   content?: string;
   inode: number;
   isDirectory: boolean = false;
+  format: FileFormat;
 
-  constructor(name: string) {
+  constructor(name: string, format: FileFormat = "text") {
     this.name = name;
+    this.format = format;
     this.inode = Math.floor(Math.random() * 10000);
     this.contentArray = [];
   }
@@ -19,8 +23,8 @@ export class File {
 }
 
 
-export default function createFile(name: string) {
-  var newFile: File = new File(name);
+export default function createFile(name: string, format: FileFormat = "text") {
+  var newFile: File = new File(name, format);
   return newFile;
 }
 
@@ -47,5 +51,4 @@ export function isFile(possibleFile: string, currentDirectory: Directory): File 
   }
   return possibleFile;
 }
-
 

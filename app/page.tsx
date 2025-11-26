@@ -5,15 +5,16 @@ import { appendContentFunction, } from "@src/file";
 import { Directory, isDirectory } from "@src/directory";
 import { File, isFile } from "@src/file";
 import { useState, useRef } from "react";
-import { cat, echo, ls, cd, mkdir, touch, greaterThan } from "@src/commands";
+import { cat, echo, ls, cd, mkdir, touch, greaterThan, CommandOutput } from "@src/commands";
 import Path, { removePath } from "@src/path";
 
 
 
+const readmeFile = new File("README", "markdown");
 var rootDirectory = new Directory("");
 function initializeRootDirectory(rootDirectory: Directory): void {
-  var README = new File("README");
-  README.appendContent("Hi!, My name is Lucas, I'm a developer with experience writing Python, JavaScript/TypeScript and C. I'm currently based in Berlin, Germany and I'm looking for an internship.\n My Developer style is honestly all over the place, I follow my own curiosity and passion, that's why I try to work only on things I find interesting.\n If you'd like to know more about what I do, check my github =>\n  https://github.com/lucasbaruj4 \n and also follow me on X =>\n https://x.com/baruthedev \n If you'd like to know more about how to use this project, which is called 'bashfolio', please cat the 'how_to' file in this directory.");
+  readmeFile.appendContent("README is loading...");
+  rootDirectory.appendElementDirectory(readmeFile.inode, readmeFile);
   var Berlin = new File("berlin_2025");
   Berlin.appendContent(`As of October 2025 I'm living in Berlin, Germany because of an exchange program with my Home University back at Paraguay.
 		       The city is cold, very cold, I'm gonna see the snow for the first time!, Germans are considered rude by some people but I think they're just missunderstood, I appreciate their idea of politeness = just don't bother anyone!. You get used to this city, and I rarely find myself missing home, I just hope I can work in something I enjoy here.`);
@@ -26,7 +27,6 @@ function initializeRootDirectory(rootDirectory: Directory): void {
   			- > (This command is the only way you can append content to a file, it takes the output of the previous command you used and then put it on the file you want to append the content to)\t
 			- echo (This command works for printing a string that you pass as an argument after the command)\t
 			More commands are coming depending on my free time! If you'd like to contribute to this project please write me an email to barujalucas0@gmail.com, if enough people contact me I'll make this pseudo terminal open source. Have fun! `);
-  rootDirectory.appendElementDirectory(README.inode, README);
   rootDirectory.appendElementDirectory(Berlin.inode, Berlin);
   rootDirectory.appendElementDirectory(How_To.inode, How_To);
 }
@@ -43,7 +43,7 @@ export default function terminal() {
   const positionLog = useRef(new Map());
   const [pastPrompts, setPrompts] = useState<Array<{
     cwd: string,
-    output: string,
+    output: CommandOutput,
     textSent: string
   }>>([]);
   var commandSent = useRef(false);
@@ -52,9 +52,12 @@ export default function terminal() {
   const firstCommand = useRef("");
   const body = useRef("");
   var commandIdentified = useRef("");
+  const logPrompt = (output: CommandOutput, textSent: string) => {
+    setPrompts(old => [...old, { cwd: currentPath.current, output, textSent }]);
+  };
 
   const detectKey = (e: any) => {
-    var output: string;
+    var output: CommandOutput;
     if (e.key == " " && !commandSent.current) { // FIRST SPACE PRESSED 
       commandSent.current = true; firstCommand.current = terminalText;
       detectCommand(firstCommand.current);
@@ -71,7 +74,7 @@ export default function terminal() {
         firstCommand.current = "";
         commandIdentified.current = "";
         body.current = "";
-        setPrompts(old => [...old, { cwd: currentPath.current, output: "", textSent: terminalText }]);
+        logPrompt({ text: "" }, terminalText);
         setTerminalText("");
         return;
       } else if (commandIdentified.current == "cd") { //IF THE COMMAND WRITTEN IS CD  
@@ -79,13 +82,13 @@ export default function terminal() {
           firstCommand.current = "";
           commandIdentified.current = "";
           body.current = "";
-          setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
+          logPrompt(output, terminalText);
           setTerminalText("");
         } else {
           firstCommand.current = "";
           commandIdentified.current = "";
           body.current = "";
-          setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
+          logPrompt(output, terminalText);
           setTerminalText("");
         }
       } else if ((body.current.includes(">"))) { // IF  THE BODY INCLUDES A GREATHER THAN SIGN
@@ -97,18 +100,18 @@ export default function terminal() {
         afterBody = afterBody.trim();
         var possible_file: any = isFile(afterBody, currentDir.current);
         if (possible_file instanceof File) { // IF THE BODY FOUND AFTER THE GREATER SIGN IS A FILE
-          var greaterThanResult: File | string = greaterThan(possible_file, extraOutput);
+          greaterThan(possible_file, extraOutput.text ?? "");
           firstCommand.current = "";
           commandIdentified.current = "";
           body.current = "";
           setTerminalText("");
-          setPrompts(old => [...old, { cwd: currentPath.current, output: "", textSent: terminalText }]);
+          logPrompt({ text: "" }, terminalText);
         } else if (possible_file instanceof String) { // IF THE BODY FOUND AFTER THE GREATER SIGN IS A FILE
           firstCommand.current = "";
           commandIdentified.current = "";
           body.current = "";
           setTerminalText("");
-          setPrompts(old => [...old, { cwd: currentPath.current, output: `Error : ${possible_file} is not a real file`, textSent: terminalText }]);
+          logPrompt({ text: `Error : ${possible_file} is not a real file` }, terminalText);
         }
       } else if (commandIdentified.current == "cat" && body.current.includes("README")) { // IF THE COMMAND IS CAT README ON ROOT
         if (currentDir.current.name == "/") {
@@ -117,20 +120,20 @@ export default function terminal() {
           commandIdentified.current = "";
           body.current = "";
           setTerminalText("");
-          setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
+          logPrompt(output, terminalText);
         }
       }
       else { // IF THE COMMAND WRITTEN IS NOT CLEAR, OR NOT GREATER THAN 
         firstCommand.current = "";
         commandIdentified.current = "";
         body.current = "";
-        setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
+        logPrompt(output, terminalText);
         setTerminalText("");
       }
     } else if (e.key == 'Enter' && commandSent.current && !commandIdentified.current) { // ENTER WITH A COMMAND SEND THAT HASN'T BEEN IDENTIFIED
       commandIdentified.current = "";
       firstCommand.current = "";
-      setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} not found`, textSent: terminalText }]);
+      logPrompt({ text: `Error: command ${terminalText} not found` }, terminalText);
       setTerminalText("");
       commandSent.current = false;
     } else if (e.key == 'Enter' && !commandSent.current) { // ENTER WITHOUT COMMAND SENT, MEANING ENTER WITHOUT HAVING PRESSED SPACE FIRST
@@ -145,17 +148,17 @@ export default function terminal() {
         if (detect_verdict) {
           var fake_body = "";
           // console.log("sending to send command", terminalText, fake_body);
-          const output = sendCommand(terminalText, fake_body);
+          const commandOutput = sendCommand(terminalText, fake_body);
           setTerminalText("");
           commandIdentified.current = "";
           firstCommand.current = "";
-          setPrompts(old => [...old, { cwd: currentPath.current, output: output, textSent: terminalText }]);
+          logPrompt(commandOutput, terminalText);
           // console.log("states after sending ls", "command Identified: ", commandIdentified.current, "commandSent = ", commandSent.current);
           commandSent.current = false;
         } else if (!detect_verdict) { // IF IT RETURNS FALSE IT'S JUST A BAD COMMAND
           commandIdentified.current = "";
           firstCommand.current = "";
-          setPrompts(old => [...old, { cwd: currentPath.current, output: `Error: command ${terminalText} hasn't received an argument`, textSent: terminalText }]);
+          logPrompt({ text: `Error: command ${terminalText} hasn't received an argument` }, terminalText);
           setTerminalText("");
           commandSent.current = false;
         }
@@ -163,28 +166,29 @@ export default function terminal() {
     }
   }
 
-  const sendCommand = (command: string, body: string): any => {
-    var output;
+  const sendCommand = (command: string, body: string): CommandOutput => {
+    var output: CommandOutput = { text: "" };
     switch (command) {
       case "cat":
         output = cat(isFile(body, currentDir.current));
         break;
       case "ls":
-        output = ls(currentDir.current);
-        var copyOutput = output;
-        output = "";
-        for (var value of copyOutput) {
-          output += value + "  ";
+        var listOutput = ls(currentDir.current);
+        var formattedOutput = "";
+        for (var value of listOutput) {
+          formattedOutput += value + "  ";
         }
+        output = { text: formattedOutput };
         break;
       case "cd":
         var output_cd: Map<string, Directory | string>;
         var newPath: any;
         var newDirectory: any;
+        var cdText = "";
         if (body == "..") {
           if (currentDir.current.name == "/") {
             positionLog.current.clear();
-            output = `Error: you're already at root`;
+            cdText = `Error: you're already at root`;
           } else {
             output_cd = cd(fatherDirectory.current, rootDirectory, currentPath.current);
             newPath = removePath(currentPath.current);
@@ -213,25 +217,31 @@ export default function terminal() {
             positionLog.current.set(currentDir.current, newDirectory);
             currentDir.current = newDirectory;
           } else {
-            output = `Error: ${body} is not a directory`;
+            cdText = `Error: ${body} is not a directory`;
           }
         }
+        output = { text: cdText };
         break;
       case "mkdir":
-        output = mkdir(body, currentDir.current);
+        mkdir(body, currentDir.current);
+        output = { text: "" };
         break;
       case "rmdir":
+        output = { text: `Error: rmdir not implemented` };
         break;
       case "clear":
+        output = { text: "" };
         break;
       case "echo":
-        output = echo(body);
+        output = { text: echo(body) };
         break;
       case "touch":
-        output = touch(body, currentDir.current);
+        touch(body, currentDir.current);
+        output = { text: "" };
         break;
       default:
         console.log("The command in the argument of sendCommand hasn't been interpreted");
+        output = { text: "" };
         break;
     }
     return output;
@@ -293,10 +303,27 @@ export default function terminal() {
 
   useEffect(() => {
     inputFocus.current?.focus();
+    const loadReadme = async () => {
+      try {
+        const response = await fetch("/content/README.md");
+        if (!response.ok) {
+          throw new Error(`status ${response.status}`);
+        }
+        const markdown = await response.text();
+        readmeFile.contentArray.splice(0, readmeFile.contentArray.length);
+        readmeFile.appendContent(markdown);
+      } catch (error) {
+        readmeFile.contentArray.splice(0, readmeFile.contentArray.length);
+        const message = error instanceof Error ? error.message : "unknown error";
+        readmeFile.appendContent(`Failed to load README: ${message}`);
+      }
+    };
+    loadReadme();
   }, []);
 
 
-  function createPastPrompt({ cwd, output, textSent }: { cwd: string, output: string, textSent: string }) {
+  function createPastPrompt({ cwd, output, textSent }: { cwd: string, output: CommandOutput, textSent: string }) {
+    const outputText = output?.text ?? "";
     return (
       <div>
         <div id="prompt" className="container grid grid-cols-[auto_1fr] gap-1 text-white p-3 text-xl py-5">
@@ -305,7 +332,16 @@ export default function terminal() {
           </div>
           <div id="user_prompt" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent">{textSent}</div>
         </div>
-        <div id="output_div"  className="whitespace-pre-wrap text-3xl font-[Terminal]"> {output} </div>
+        {output?.images?.length ? (
+          <div className="mt-4 flex flex-col gap-4">
+            {output.images.map((image, index) => (
+              <div key={`${image.url}-${index}`} className="flex flex-col gap-2">
+                <img src={image.url} alt={image.alt} className="max-w-xs pb-4" />
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div id="output_div"  className="whitespace-pre-wrap text-2xl font-[Terminal]"> {outputText} </div>
       </div>
     )
   }

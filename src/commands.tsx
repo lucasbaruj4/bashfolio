@@ -1,15 +1,25 @@
 import createFile, { File, appendContentFunction, printContent } from "./file";
 import createDirectory, { Directory } from "./directory"
 import Path from "./path";
+import { renderMarkdown, MarkdownImage } from "./markdown";
 
-export function cat(file: File | any) {
+export type CommandOutput = {
+  text: string;
+  images?: MarkdownImage[];
+};
+
+export function cat(file: File | any): CommandOutput {
   if (!(file instanceof File)) {
     var text = `Error: '${file}' is not a real file`;
-    return text;
+    return { text };
   }
   const filePassed = file;
-  const catOutput = printContent(filePassed);
-  return catOutput;
+  const rawOutput = printContent(filePassed).trimStart();
+  if (filePassed.format === "markdown") {
+    const rendered = renderMarkdown(rawOutput);
+    return { text: rendered.text, images: rendered.images };
+  }
+  return { text: rawOutput };
 }
 
 export function mkdir(name: string, currentDir: Directory) {
