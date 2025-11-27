@@ -43,6 +43,9 @@ export default function terminal() {
   const showReadmePlaceHolder = useRef(true);
   const fatherDirectory = useRef(rootDirectory);
   const positionLog = useRef(new Map());
+  const commandHistory = useRef<Array<string>>([]);
+  const historyIndex = useRef<number | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
   const [pastPrompts, setPrompts] = useState<Array<{
     cwd: string,
     output: CommandOutput,
@@ -52,6 +55,11 @@ export default function terminal() {
   const [terminalText, setTerminalText] = useState("");
   const logPrompt = (output: CommandOutput, textSent: string) => {
     setPrompts(old => [...old, { cwd: currentPath.current, output, textSent }]);
+  };
+
+  const recordCommandHistory = (rawInput: string) => {
+    commandHistory.current.push(rawInput);
+    historyIndex.current = null;
   };
 
   const processCurrentInput = () => {
@@ -72,15 +80,74 @@ export default function terminal() {
       return;
     }
 
+    recordCommandHistory(rawInput);
     runCommand(parsedResult.command, rawInput);
   };
 
-  const detectKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Enter") {
+  const handleHistoryNavigation = (direction: "up" | "down") => {
+    const history = commandHistory.current;
+    if (!history.length) {
       return;
     }
-    e.preventDefault();
-    processCurrentInput();
+
+    if (direction === "up") {
+      const nextIndex = historyIndex.current === null
+        ? history.length - 1
+        : Math.max(0, historyIndex.current - 1);
+      historyIndex.current = nextIndex;
+      setTerminalText(history[nextIndex]);
+      return;
+    }
+
+    if (historyIndex.current === null) {
+      return;
+    }
+
+    if (historyIndex.current >= history.length - 1) {
+      historyIndex.current = null;
+      setTerminalText("");
+      return;
+    }
+
+    const nextIndex = historyIndex.current + 1;
+    historyIndex.current = nextIndex;
+    setTerminalText(history[nextIndex]);
+  };
+
+  const handleCtrlC = () => {
+    logPrompt({ text: "^C" }, terminalText);
+    setTerminalText("");
+    historyIndex.current = null;
+  };
+
+  const handleInputKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      processCurrentInput();
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      handleHistoryNavigation("up");
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      handleHistoryNavigation("down");
+      return;
+    }
+
+    if (e.key === "c" && e.ctrlKey) {
+      e.preventDefault();
+      handleCtrlC();
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setTerminalText(value);
+    historyIndex.current = null;
   };
 
   const runCommand = (command: ParsedCommand, rawInput: string) => {
@@ -218,12 +285,22 @@ export default function terminal() {
     }
 
     return (
-      <div onKeyDown={detectKey}>
+      <div>
         <div id="current_prompt" className="container grid grid-cols-[auto_1fr] gap-1 text-white p-3 text-xl py-5">
           <div id="current_pwd" className="col-start-1 text-left text-3xl font-[Terminal]">
             {cwd} {">"}&nbsp;
           </div>
-          <input id="current_user_prompt" value={terminalText} placeholder={placeholder} autoFocus ref={inputFocus} type="text" className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent" onChange={(e) => setTerminalText(e.target.value)} />
+          <input
+            id="current_user_prompt"
+            value={terminalText}
+            placeholder={placeholder}
+            autoFocus
+            ref={inputFocus}
+            type="text"
+            className="col-start-2 text-left text-3xl font-[Terminal] outline-none  caret_transparent"
+            onKeyDown={handleInputKeyDown}
+            onChange={(e) => handleInputChange(e.target.value)}
+          />
         </div>
         <div id="current_output_div" className="text-3xl font-[Terminal]"> {output} </div>
       </div>
@@ -231,7 +308,6 @@ export default function terminal() {
   }
 
   useEffect(() => {
-    inputFocus.current?.focus();
     const loadReadme = async () => {
       try {
         const response = await fetch("/content/README.md");
@@ -249,6 +325,11 @@ export default function terminal() {
     };
     loadReadme();
   }, []);
+
+  useEffect(() => {
+    inputFocus.current?.focus();
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [pastPrompts]);
 
 
   function createPastPrompt({ cwd, output, textSent }: { cwd: string, output: CommandOutput, textSent: string }) {
@@ -279,6 +360,7 @@ export default function terminal() {
           </div>)}
 
       {createCurrentPrompt({ cwd: currentPath.current, output: "" }, showReadmePlaceHolder.current)}
+      <div ref={bottomRef} />
     </div>
   )
 }
