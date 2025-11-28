@@ -3,35 +3,44 @@ import { File } from "./file";
 export class Directory {
   name: string;
   inode: number;
-  list: Map<number, File | Directory>;
+  children: Map<string, File | Directory>;
+  parent: Directory | null;
   isDirectory: boolean = true;
 
-  constructor(name: string) {
-    this.name = name + "/";
+  constructor(name: string, parent: Directory | null = null) {
+    this.name = name
+      ? (name.endsWith("/") ? name : `${name}/`)
+      : "/";
+    this.parent = parent;
     this.inode = Math.floor(Math.random() * 10000);
-    this.list = new Map();
+    this.children = new Map();
   }
 
-  appendElementDirectory(inode: number, Element: File | Directory) {
-    this.list.set(inode, Element);
+  appendElementDirectory(element: File | Directory) {
+    if (element instanceof Directory) {
+      element.parent = this;
+    }
+    this.children.set(element.name, element);
   }
 
-
+  getChild(name: string) {
+    const direct = this.children.get(name);
+    if (direct || name.endsWith("/")) {
+      return direct;
+    }
+    return this.children.get(`${name}/`);
+  }
 }
 
-export default function createDirectory(name: string) {
-  const newDirectory = new Directory(name);
+export default function createDirectory(name: string, parent: Directory | null = null) {
+  const newDirectory = new Directory(name, parent);
   return newDirectory;
 }
 
-
 export function isDirectory(possibleDirectory: string, currentDirectory: Directory): Directory | string {
-  for (var value of currentDirectory.list.values()) {
-    if (value instanceof Directory && value.name == possibleDirectory) {
-      return value;
-    }
+  const child = currentDirectory.getChild(possibleDirectory);
+  if (child instanceof Directory) {
+    return child;
   }
   return possibleDirectory;
 }
-
-

@@ -1,10 +1,10 @@
 'use client';
 import { useEffect, useState, useRef } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { Directory, isDirectory } from "@src/directory";
+import { Directory } from "@src/directory";
 import { File, isFile } from "@src/file";
-import { cat, echo, ls, cd, mkdir, touch, greaterThan, CommandOutput } from "@src/commands";
-import Path, { removePath } from "@src/path";
+import { cat, echo, ls, mkdir, touch, greaterThan, CommandOutput } from "@src/commands";
+import Path, { resolveDirectoryPath } from "@src/path";
 import TerminalOutput from "@src/terminal-output";
 import { parseCommand, type ParsedCommand } from "@src/parser";
 
@@ -17,7 +17,7 @@ const readmeFile = new File("README", "markdown");
 var rootDirectory = new Directory("");
 function initializeRootDirectory(rootDirectory: Directory): void {
   readmeFile.appendContent("README is loading...");
-  rootDirectory.appendElementDirectory(readmeFile.inode, readmeFile);
+  rootDirectory.appendElementDirectory(readmeFile);
   var Berlin = new File("berlin_2025");
   Berlin.appendContent(`As of October 2025 I'm living in Berlin, Germany because of an exchange program with my Home University back at Paraguay.
 		       The city is cold, very cold, I'm gonna see the snow for the first time!, Germans are considered rude by some people but I think they're just missunderstood, I appreciate their idea of politeness = just don't bother anyone!. You get used to this city, and I rarely find myself missing home, I just hope I can work in something I enjoy here.`);
@@ -30,8 +30,8 @@ function initializeRootDirectory(rootDirectory: Directory): void {
   			- > (This command is the only way you can append content to a file, it takes the output of the previous command you used and then put it on the file you want to append the content to)\t
 			- echo (This command works for printing a string that you pass as an argument after the command)\t
 			More commands are coming depending on my free time! If you'd like to contribute to this project please write me an email to barujalucas0@gmail.com, if enough people contact me I'll make this pseudo terminal open source. Have fun! `);
-  rootDirectory.appendElementDirectory(Berlin.inode, Berlin);
-  rootDirectory.appendElementDirectory(How_To.inode, How_To);
+  rootDirectory.appendElementDirectory(Berlin);
+  rootDirectory.appendElementDirectory(How_To);
 }
 
 initializeRootDirectory(rootDirectory);
@@ -41,8 +41,6 @@ export default function terminal() {
   const currentPath = useRef(rootPath);
   const inputFocus = useRef<HTMLInputElement>(null);
   const showReadmePlaceHolder = useRef(true);
-  const fatherDirectory = useRef(rootDirectory);
-  const positionLog = useRef(new Map());
   const commandHistory = useRef<Array<string>>([]);
   const historyIndex = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -53,6 +51,7 @@ export default function terminal() {
   }>>([]);
   const currentDir = useRef(rootDirectory);
   const [terminalText, setTerminalText] = useState("");
+  const [completionOptions, setCompletionOptions] = useState<string[]>([]);
   const logPrompt = (output: CommandOutput, textSent: string) => {
     setPrompts(old => [...old, { cwd: currentPath.current, output, textSent }]);
   };
@@ -60,12 +59,14 @@ export default function terminal() {
   const recordCommandHistory = (rawInput: string) => {
     commandHistory.current.push(rawInput);
     historyIndex.current = null;
+    setCompletionOptions([]);
   };
 
   const processCurrentInput = () => {
     const rawInput = terminalText;
     if (!rawInput.trim()) {
       setTerminalText("");
+      setCompletionOptions([]);
       return;
     }
 
@@ -73,10 +74,12 @@ export default function terminal() {
     if (parsedResult.error) {
       if (parsedResult.error === "No command provided") {
         setTerminalText("");
+        setCompletionOptions([]);
         return;
       }
       logPrompt({ text: `Error: ${parsedResult.error}` }, rawInput);
       setTerminalText("");
+      setCompletionOptions([]);
       return;
     }
 
@@ -118,6 +121,100 @@ export default function terminal() {
     logPrompt({ text: "^C" }, terminalText);
     setTerminalText("");
     historyIndex.current = null;
+    setCompletionOptions([]);
+  };
+
+  const directoryEntries = () => {
+    const entries: Array<{ name: string; isDirectory: boolean }> = [];
+    currentDir.current.children.forEach((value) => {
+      if (value instanceof Directory) {
+        const normalized = value.name.endsWith("/") ? value.name.slice(0, -1) : value.name;
+        entries.push({ name: normalized, isDirectory: true });
+      } else {
+        entries.push({ name: value.name, isDirectory: false });
+      }
+    });
+    return entries.sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const findCommonPrefix = (options: string[]): string => {
+    if (!options.length) {
+      return "";
+    }
+    let prefix = options[0];
+    for (let i = 1; i < options.length; i += 1) {
+      while (!options[i].startsWith(prefix) && prefix) {
+        prefix = prefix.slice(0, -1);
+      }
+      if (!prefix) {
+        break;
+      }
+    }
+    return prefix;
+  };
+
+  const handleAutocomplete = () => {
+    if (!terminalText.trim()) {
+      setCompletionOptions([]);
+      return;
+    }
+
+    const cursorIndex = terminalText.length;
+    const textBeforeCursor = terminalText.slice(0, cursorIndex);
+    const match = textBeforeCursor.match(/(^|\s)([^\s]*)$/);
+    const rawPrefix = match ? match[2] : "";
+    const prefixStart = match ? cursorIndex - rawPrefix.length : cursorIndex;
+    const baseText = terminalText.slice(0, prefixStart);
+    const suffixText = terminalText.slice(cursorIndex);
+
+    let prefix = rawPrefix;
+    let quotePrefix = "";
+
+    if (prefix.startsWith("\"") || prefix.startsWith("'")) {
+      quotePrefix = prefix[0];
+      prefix = prefix.slice(1);
+    }
+
+    if (!prefix) {
+      setCompletionOptions([]);
+      return;
+    }
+
+    if (prefix.includes("/")) {
+      setCompletionOptions([]);
+      return;
+    }
+
+    const entries = directoryEntries();
+    const matches = entries.filter((entry) => entry.name.startsWith(prefix));
+
+    if (!matches.length) {
+      setCompletionOptions([]);
+      return;
+    }
+
+    const applyCompletion = (completed: string, trailing?: string) => {
+      const completedToken = quotePrefix ? `${quotePrefix}${completed}` : completed;
+      const nextValue = `${baseText}${completedToken}${trailing ?? ""}${suffixText}`;
+      setTerminalText(nextValue);
+      setCompletionOptions([]);
+    };
+
+    if (matches.length === 1) {
+      const matchEntry = matches[0];
+      const trailing = matchEntry.isDirectory ? "/" : " ";
+      applyCompletion(matchEntry.name, trailing);
+      return;
+    }
+
+    const commonPrefix = findCommonPrefix(matches.map((entry) => entry.name));
+    if (commonPrefix.length > prefix.length) {
+      applyCompletion(commonPrefix);
+      return;
+    }
+
+    const formattedOptions = matches.map((entry) => entry.isDirectory ? `${entry.name}/` : entry.name);
+    setCompletionOptions(formattedOptions);
   };
 
   const handleInputKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -139,6 +236,12 @@ export default function terminal() {
       return;
     }
 
+    if (e.key === "Tab") {
+      e.preventDefault();
+      handleAutocomplete();
+      return;
+    }
+
     if (e.key === "c" && e.ctrlKey) {
       e.preventDefault();
       handleCtrlC();
@@ -148,24 +251,30 @@ export default function terminal() {
   const handleInputChange = (value: string) => {
     setTerminalText(value);
     historyIndex.current = null;
+    if (completionOptions.length) {
+      setCompletionOptions([]);
+    }
   };
 
   const runCommand = (command: ParsedCommand, rawInput: string) => {
     if (command.name === "clear") {
       setTerminalText("");
       setPrompts([]);
+      setCompletionOptions([]);
       return;
     }
 
     if (!SUPPORTED_COMMANDS.has(command.name)) {
       logPrompt({ text: `Error: command ${command.name} not found` }, rawInput);
       setTerminalText("");
+      setCompletionOptions([]);
       return;
     }
 
     if (COMMANDS_REQUIRING_ARGS.has(command.name) && command.args.length === 0) {
       logPrompt({ text: `Error: command ${command.name} hasn't received an argument` }, rawInput);
       setTerminalText("");
+      setCompletionOptions([]);
       return;
     }
 
@@ -182,6 +291,7 @@ export default function terminal() {
 
     logPrompt(output, rawInput);
     setTerminalText("");
+    setCompletionOptions([]);
   };
 
   const sendCommand = (command: ParsedCommand): CommandOutput => {
@@ -200,48 +310,17 @@ export default function terminal() {
         }
         output = { text: formattedOutput };
         break;
-      case "cd":
-        var output_cd: Map<string, Directory | string>;
-        var newPath: any;
-        var newDirectory: any;
-        var cdText = "";
-        if (body == "..") {
-          if (currentDir.current.name == "/") {
-            positionLog.current.clear();
-            cdText = `Error: you're already at root`;
-          } else {
-            output_cd = cd(fatherDirectory.current, rootDirectory, currentPath.current);
-            newPath = removePath(currentPath.current);
-            newDirectory = output_cd.get("newDirectory");
-            currentPath.current = newPath;
-            if (currentDir.current == fatherDirectory.current) { // THIS MEANS WE KNOW WE HAVE TO GO ONE "CHANGE" BEFORE 
-              var beforeFather;
-              for (const [key, value] of positionLog.current) {
-                if (value == currentDir.current) {
-                  beforeFather = key;
-                }
-              }
-              currentDir.current = beforeFather;
-            } else {
-              currentDir.current = fatherDirectory.current;
-            }
-          }
-        } else {
-          const output_isDirectory = isDirectory(body, currentDir.current);
-          if (output_isDirectory instanceof Directory) {
-            output_cd = cd(output_isDirectory, rootDirectory, currentPath.current);
-            newPath = output_cd.get("newPath");
-            newDirectory = output_cd.get("newDirectory");
-            currentPath.current = newPath;
-            fatherDirectory.current = currentDir.current;
-            positionLog.current.set(currentDir.current, newDirectory);
-            currentDir.current = newDirectory;
-          } else {
-            cdText = `Error: ${body} is not a directory`;
-          }
+      case "cd": {
+        const resolved = resolveDirectoryPath(body, currentDir.current, rootDirectory, currentPath.current);
+        if ("error" in resolved) {
+          output = { text: `Error: ${resolved.error}` };
+          break;
         }
-        output = { text: cdText };
+        currentDir.current = resolved.directory;
+        currentPath.current = resolved.path;
+        output = { text: "" };
         break;
+      }
       case "mkdir":
         mkdir(body, currentDir.current);
         output = { text: "" };
@@ -303,6 +382,11 @@ export default function terminal() {
           />
         </div>
         <div id="current_output_div" className="text-3xl font-[Terminal]"> {output} </div>
+        {completionOptions.length ? (
+          <div className="text-2xl font-[Terminal] text-gray-300 pl-3">
+            {completionOptions.join("  ")}
+          </div>
+        ) : null}
       </div>
     )
   }

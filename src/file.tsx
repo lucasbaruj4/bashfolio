@@ -44,11 +44,9 @@ export function printContent(file: File) {
 }
 
 export function isFile(possibleFile: string, currentDirectory: Directory): File | string {
-  for (var value of currentDirectory.list.values()) {
-    if (value instanceof File && value.name == possibleFile) {
-      return value;
-    }
+  const child = currentDirectory.children.get(possibleFile);
+  if (child instanceof File) {
+    return child;
   }
   return possibleFile;
 }
-

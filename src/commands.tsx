@@ -24,8 +24,8 @@ export function cat(file: File | any): CommandOutput {
 }
 
 export function mkdir(name: string, currentDir: Directory) {
-  const newDirectory = createDirectory(name);
-  currentDir.appendElementDirectory(newDirectory.inode, newDirectory);
+  const newDirectory = createDirectory(name, currentDir);
+  currentDir.appendElementDirectory(newDirectory);
   return "";
 }
 
@@ -35,13 +35,13 @@ export function echo(content: string) {
 
 export function touch(name: string, currentDir: Directory): string {
   const newFile = createFile(name);
-  currentDir.appendElementDirectory(newFile.inode, newFile);
+  currentDir.appendElementDirectory(newFile);
   return "";
 }
 
 export function ls(currentDirectory: Directory): Array<string> {
   var arrayReturnedNames = [];
-  for (var value of currentDirectory.list.values()) {
+  for (var value of currentDirectory.children.values()) {
     arrayReturnedNames.push(value.name);
   }
   return arrayReturnedNames;

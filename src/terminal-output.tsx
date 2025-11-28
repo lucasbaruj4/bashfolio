@@ -43,7 +43,7 @@ export default function TerminalOutput({ output }: TerminalOutputProps) {
   const secondaryImages = images.slice(1);
 
   const textContent = (
-    <div className="flex-1 whitespace-pre-wrap text-2xl font-[Terminal] text-white">
+    <div className="flex-1 whitespace-pre-wrap text-2xl px-6 font-[Terminal] text-white">
       {renderSegments(segments, text)}
     </div>
   );
