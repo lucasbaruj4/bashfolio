@@ -10,28 +10,28 @@ import { parseCommand, type ParsedCommand } from "@src/parser";
 
 
 
-const SUPPORTED_COMMANDS = new Set(["cat", "ls", "cd", "mkdir", "rmdir", "echo", "touch", "clear"]);
+const SUPPORTED_COMMANDS = new Set(["cat", "ls", "cd", "mkdir", "rmdir", "echo", "touch", "clear", "help"]);
 const COMMANDS_REQUIRING_ARGS = new Set(["cat", "cd", "mkdir", "rmdir", "echo", "touch"]);
 
 const readmeFile = new File("README", "markdown");
+const berlinFile = new File("berlin_2025", "markdown");
+const howToFile = new File("how_to", "markdown");
+
+const MARKDOWN_SOURCES = [
+  { file: readmeFile, url: "/content/README.md", label: "README" },
+  { file: berlinFile, url: "/content/berlin_2025.md", label: "berlin_2025" },
+  { file: howToFile, url: "/content/how_to.md", label: "how_to" },
+] as const;
+
+MARKDOWN_SOURCES.forEach(({ file, label }) => {
+  file.appendContent(`${label} is loading...`);
+});
+
 var rootDirectory = new Directory("");
 function initializeRootDirectory(rootDirectory: Directory): void {
-  readmeFile.appendContent("README is loading...");
-  rootDirectory.appendElementDirectory(readmeFile);
-  var Berlin = new File("berlin_2025");
-  Berlin.appendContent(`As of October 2025 I'm living in Berlin, Germany because of an exchange program with my Home University back at Paraguay.
-		       The city is cold, very cold, I'm gonna see the snow for the first time!, Germans are considered rude by some people but I think they're just missunderstood, I appreciate their idea of politeness = just don't bother anyone!. You get used to this city, and I rarely find myself missing home, I just hope I can work in something I enjoy here.`);
-  var How_To = new File("how_to");
-  How_To.appendContent(`This is Bashfolio, a pseudo terminal that "runs" bash, these are the commands that are current functional:\t
-			- cd (This command works for going into directories and you can go back to the father directory using 'cd ..')\t
-  			- ls (This command lets you list all files/directories in the current directory)\t
-  			- mkdir (This command lets you create a new directory named whatever you put as an argument)\t
-  			- touch (This command lets you create a new file in the current directory named whatever you put as an argument)\t
-  			- > (This command is the only way you can append content to a file, it takes the output of the previous command you used and then put it on the file you want to append the content to)\t
-			- echo (This command works for printing a string that you pass as an argument after the command)\t
-			More commands are coming depending on my free time! If you'd like to contribute to this project please write me an email to barujalucas0@gmail.com, if enough people contact me I'll make this pseudo terminal open source. Have fun! `);
-  rootDirectory.appendElementDirectory(Berlin);
-  rootDirectory.appendElementDirectory(How_To);
+  MARKDOWN_SOURCES.forEach(({ file }) => {
+    rootDirectory.appendElementDirectory(file);
+  });
 }
 
 initializeRootDirectory(rootDirectory);
@@ -338,6 +338,9 @@ export default function terminal() {
         touch(body, currentDir.current);
         output = { text: "" };
         break;
+      case "help":
+        output = cat(howToFile);
+        break;
       default:
         console.log("The command in the argument of sendCommand hasn't been interpreted");
         output = { text: "" };
@@ -392,22 +395,24 @@ export default function terminal() {
   }
 
   useEffect(() => {
-    const loadReadme = async () => {
-      try {
-        const response = await fetch("/content/README.md");
-        if (!response.ok) {
-          throw new Error(`status ${response.status}`);
+    const loadMarkdownFiles = async () => {
+      await Promise.all(MARKDOWN_SOURCES.map(async ({ file, url, label }) => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`status ${response.status}`);
+          }
+          const markdown = await response.text();
+          file.contentArray.splice(0, file.contentArray.length);
+          file.appendContent(markdown);
+        } catch (error) {
+          file.contentArray.splice(0, file.contentArray.length);
+          const message = error instanceof Error ? error.message : "unknown error";
+          file.appendContent(`Failed to load ${label}: ${message}`);
         }
-        const markdown = await response.text();
-        readmeFile.contentArray.splice(0, readmeFile.contentArray.length);
-        readmeFile.appendContent(markdown);
-      } catch (error) {
-        readmeFile.contentArray.splice(0, readmeFile.contentArray.length);
-        const message = error instanceof Error ? error.message : "unknown error";
-        readmeFile.appendContent(`Failed to load README: ${message}`);
-      }
+      }));
     };
-    loadReadme();
+    loadMarkdownFiles();
   }, []);
 
   useEffect(() => {
